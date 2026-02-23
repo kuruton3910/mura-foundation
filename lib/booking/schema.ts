@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from "zod";
 
 export const reservationSchema = z.object({
   isMember: z.boolean(),
@@ -17,9 +17,9 @@ export const reservationSchema = z.object({
   guestEmail: z.string(),
   guestPhone: z.string(),
   notes: z.string(),
-})
+});
 
-export type ReservationFormData = z.infer<typeof reservationSchema>
+export type ReservationFormData = z.infer<typeof reservationSchema>;
 
 export const defaultFormValues: ReservationFormData = {
   isMember: false,
@@ -34,8 +34,8 @@ export const defaultFormValues: ReservationFormData = {
   rentalFirepit: false,
   rentalFirepitCount: 1,
   agreedToTerms: false,
-  guestName: '',
-  guestEmail: '',
-  guestPhone: '',
-  notes: '',
-}
+  guestName: "",
+  guestEmail: "",
+  guestPhone: "",
+  notes: "",
+};

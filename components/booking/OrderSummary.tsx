@@ -1,29 +1,39 @@
-'use client'
+"use client";
 
-import { useFormContext } from 'react-hook-form'
-import type { ReservationFormData } from '@/lib/booking/schema'
-import { calcTotal, calcBreakdown, calcNights, formatDate } from '@/lib/booking/pricing'
+import { useFormContext } from "react-hook-form";
+import type { ReservationFormData } from "@/lib/booking/schema";
+import {
+  calcTotal,
+  calcBreakdown,
+  calcNights,
+  formatDate,
+} from "@/lib/booking/pricing";
 
 type OrderSummaryProps = {
-  currentStep: number
-  onNext: () => void
-  onPrev: () => void
-  isSubmitting?: boolean
-}
+  currentStep: number;
+  onNext: () => void;
+  onPrev: () => void;
+  isSubmitting?: boolean;
+};
 
 const STEP_BUTTON_LABELS: Record<number, string> = {
-  1: '利用規約の確認へ進む',
-  2: '予約情報の入力へ進む',
-  3: '決済へ進む',
-  4: '予約を確定する',
-}
+  1: "利用規約の確認へ進む",
+  2: "予約情報の入力へ進む",
+  3: "決済へ進む",
+  4: "予約を確定する",
+};
 
-export default function OrderSummary({ currentStep, onNext, onPrev, isSubmitting }: OrderSummaryProps) {
-  const { watch } = useFormContext<ReservationFormData>()
-  const data = watch()
-  const nights = calcNights(data.checkinDate, data.checkoutDate)
-  const total = calcTotal(data)
-  const breakdown = calcBreakdown(data)
+export default function OrderSummary({
+  currentStep,
+  onNext,
+  onPrev,
+  isSubmitting,
+}: OrderSummaryProps) {
+  const { watch } = useFormContext<ReservationFormData>();
+  const data = watch();
+  const nights = calcNights(data.checkinDate, data.checkoutDate);
+  const total = calcTotal(data);
+  const breakdown = calcBreakdown(data);
 
   return (
     <div className="sticky top-8 space-y-4">
@@ -36,11 +46,15 @@ export default function OrderSummary({ currentStep, onNext, onPrev, isSubmitting
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between">
               <dt className="text-gray-500">チェックイン</dt>
-              <dd className="font-bold text-right">{formatDate(data.checkinDate)}</dd>
+              <dd className="font-bold text-right">
+                {formatDate(data.checkinDate)}
+              </dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-gray-500">チェックアウト</dt>
-              <dd className="font-bold text-right">{formatDate(data.checkoutDate)}</dd>
+              <dd className="font-bold text-right">
+                {formatDate(data.checkoutDate)}
+              </dd>
             </div>
             {nights > 0 && (
               <div className="flex justify-between">
@@ -50,7 +64,9 @@ export default function OrderSummary({ currentStep, onNext, onPrev, isSubmitting
             )}
             <div className="flex justify-between">
               <dt className="text-gray-500">車両・区画</dt>
-              <dd className="font-bold">{data.vehicleCount}台 ({data.vehicleCount}区画)</dd>
+              <dd className="font-bold">
+                {data.vehicleCount}台 ({data.vehicleCount}区画)
+              </dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-gray-500">人数</dt>
@@ -75,7 +91,9 @@ export default function OrderSummary({ currentStep, onNext, onPrev, isSubmitting
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400 text-center">日付を選択してください</p>
+            <p className="text-sm text-gray-400 text-center">
+              日付を選択してください
+            </p>
           )}
 
           {breakdown.length > 0 && <hr />}
@@ -84,8 +102,12 @@ export default function OrderSummary({ currentStep, onNext, onPrev, isSubmitting
           <div className="bg-red-50 p-4 rounded-lg border border-red-100">
             <h4 className="text-red-800 text-xs font-bold mb-2">重要ルール</h4>
             <ul className="text-xs text-red-700 space-y-1 list-disc list-inside">
-              <li><strong>利用時間：11AM 〜 翌11AM</strong></li>
-              <li><strong>20:00〜5:00は車の出入り禁止</strong></li>
+              <li>
+                <strong>利用時間：11AM 〜 翌11AM</strong>
+              </li>
+              <li>
+                <strong>20:00〜5:00は車の出入り禁止</strong>
+              </li>
             </ul>
           </div>
 
@@ -93,7 +115,7 @@ export default function OrderSummary({ currentStep, onNext, onPrev, isSubmitting
           <div className="text-center">
             <span className="text-sm text-gray-500">合計金額 (税込)</span>
             <div className="text-3xl font-bold text-[#2D4030] mt-1">
-              {total > 0 ? `¥${total.toLocaleString()}` : '---'}
+              {total > 0 ? `¥${total.toLocaleString()}` : "---"}
             </div>
           </div>
 
@@ -105,7 +127,7 @@ export default function OrderSummary({ currentStep, onNext, onPrev, isSubmitting
               disabled={isSubmitting}
               className="w-full bg-[#2D4030] hover:bg-[#2D4030]/80 text-white font-bold py-4 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? '処理中...' : STEP_BUTTON_LABELS[currentStep]}
+              {isSubmitting ? "処理中..." : STEP_BUTTON_LABELS[currentStep]}
             </button>
             {currentStep > 1 && (
               <button
@@ -119,20 +141,24 @@ export default function OrderSummary({ currentStep, onNext, onPrev, isSubmitting
           </div>
 
           <p className="text-[10px] text-center text-gray-400">
-            {currentStep === 1 && '※次の画面で20項目の利用規約への同意が必要です。'}
-            {currentStep === 2 && '※全項目への同意が必要です。'}
-            {currentStep === 3 && '※入力内容を確認の上、決済へお進みください。'}
-            {currentStep === 4 && '※決済が完了するまで予約は確定しません。'}
+            {currentStep === 1 &&
+              "※次の画面で20項目の利用規約への同意が必要です。"}
+            {currentStep === 2 && "※全項目への同意が必要です。"}
+            {currentStep === 3 && "※入力内容を確認の上、決済へお進みください。"}
+            {currentStep === 4 && "※決済が完了するまで予約は確定しません。"}
           </p>
         </div>
       </div>
 
       <div className="text-center p-4 bg-stone-100 rounded-lg">
         <p className="text-xs text-stone-500">お困りの際はこちら</p>
-        <a href="#" className="text-xs font-bold text-[#2D4030] underline mt-1 block">
+        <a
+          href="#"
+          className="text-xs font-bold text-[#2D4030] underline mt-1 block"
+        >
           よくある質問とヘルプ
         </a>
       </div>
     </div>
-  )
+  );
 }

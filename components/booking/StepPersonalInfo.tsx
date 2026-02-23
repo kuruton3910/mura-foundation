@@ -1,13 +1,13 @@
-'use client'
+"use client";
 
-import { useFormContext } from 'react-hook-form'
-import type { ReservationFormData } from '@/lib/booking/schema'
+import { useFormContext } from "react-hook-form";
+import type { ReservationFormData } from "@/lib/booking/schema";
 
 export default function StepPersonalInfo({ error }: { error?: string }) {
   const {
     register,
     formState: { errors },
-  } = useFormContext<ReservationFormData>()
+  } = useFormContext<ReservationFormData>();
 
   return (
     <div className="space-y-6">
@@ -37,13 +37,15 @@ export default function StepPersonalInfo({ error }: { error?: string }) {
               placeholder="山田 太郎"
               className={`w-full border-2 rounded-lg p-3 outline-none transition-colors ${
                 errors.guestName
-                  ? 'border-red-400 focus:border-red-500'
-                  : 'border-gray-200 focus:border-[#2D4030]'
+                  ? "border-red-400 focus:border-red-500"
+                  : "border-gray-200 focus:border-[#2D4030]"
               }`}
-              {...register('guestName')}
+              {...register("guestName")}
             />
             {errors.guestName && (
-              <p className="mt-1 text-xs text-red-500">{errors.guestName.message}</p>
+              <p className="mt-1 text-xs text-red-500">
+                {errors.guestName.message}
+              </p>
             )}
           </div>
 
@@ -57,15 +59,19 @@ export default function StepPersonalInfo({ error }: { error?: string }) {
               placeholder="example@email.com"
               className={`w-full border-2 rounded-lg p-3 outline-none transition-colors ${
                 errors.guestEmail
-                  ? 'border-red-400 focus:border-red-500'
-                  : 'border-gray-200 focus:border-[#2D4030]'
+                  ? "border-red-400 focus:border-red-500"
+                  : "border-gray-200 focus:border-[#2D4030]"
               }`}
-              {...register('guestEmail')}
+              {...register("guestEmail")}
             />
             {errors.guestEmail && (
-              <p className="mt-1 text-xs text-red-500">{errors.guestEmail.message}</p>
+              <p className="mt-1 text-xs text-red-500">
+                {errors.guestEmail.message}
+              </p>
             )}
-            <p className="mt-1 text-xs text-gray-400">予約確認メールをこちらに送信します。</p>
+            <p className="mt-1 text-xs text-gray-400">
+              予約確認メールをこちらに送信します。
+            </p>
           </div>
 
           {/* Phone */}
@@ -78,30 +84,33 @@ export default function StepPersonalInfo({ error }: { error?: string }) {
               placeholder="090-0000-0000"
               className={`w-full border-2 rounded-lg p-3 outline-none transition-colors ${
                 errors.guestPhone
-                  ? 'border-red-400 focus:border-red-500'
-                  : 'border-gray-200 focus:border-[#2D4030]'
+                  ? "border-red-400 focus:border-red-500"
+                  : "border-gray-200 focus:border-[#2D4030]"
               }`}
-              {...register('guestPhone')}
+              {...register("guestPhone")}
             />
             {errors.guestPhone && (
-              <p className="mt-1 text-xs text-red-500">{errors.guestPhone.message}</p>
+              <p className="mt-1 text-xs text-red-500">
+                {errors.guestPhone.message}
+              </p>
             )}
           </div>
 
           {/* Notes */}
           <div>
             <label className="block text-sm font-bold mb-2">
-              ご要望・その他 <span className="text-gray-400 font-normal">(任意)</span>
+              ご要望・その他{" "}
+              <span className="text-gray-400 font-normal">(任意)</span>
             </label>
             <textarea
               placeholder="アレルギーや特別なご要望があればお書きください。"
               rows={4}
               className="w-full border-2 border-gray-200 rounded-lg p-3 outline-none focus:border-[#2D4030] transition-colors resize-none"
-              {...register('notes')}
+              {...register("notes")}
             />
           </div>
         </div>
       </section>
     </div>
-  )
+  );
 }

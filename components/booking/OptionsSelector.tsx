@@ -1,13 +1,13 @@
-'use client'
+"use client";
 
-import { useFormContext } from 'react-hook-form'
-import type { ReservationFormData } from '@/lib/booking/schema'
-import { RentalCountSelector } from './GuestSelector'
+import { useFormContext } from "react-hook-form";
+import type { ReservationFormData } from "@/lib/booking/schema";
+import { RentalCountSelector } from "./GuestSelector";
 
 export default function OptionsSelector() {
-  const { watch, setValue } = useFormContext<ReservationFormData>()
-  const rentalTent = watch('rentalTent')
-  const rentalFirepit = watch('rentalFirepit')
+  const { watch, setValue } = useFormContext<ReservationFormData>();
+  const rentalTent = watch("rentalTent");
+  const rentalFirepit = watch("rentalFirepit");
 
   return (
     <div className="space-y-3">
@@ -17,7 +17,7 @@ export default function OptionsSelector() {
           <input
             type="checkbox"
             checked={rentalTent}
-            onChange={e => setValue('rentalTent', e.target.checked)}
+            onChange={(e) => setValue("rentalTent", e.target.checked)}
             className="w-5 h-5 accent-[#2D4030]"
           />
           <div className="ml-4 flex-1">
@@ -38,7 +38,7 @@ export default function OptionsSelector() {
           <input
             type="checkbox"
             checked={rentalFirepit}
-            onChange={e => setValue('rentalFirepit', e.target.checked)}
+            onChange={(e) => setValue("rentalFirepit", e.target.checked)}
             className="w-5 h-5 accent-[#2D4030]"
           />
           <div className="ml-4 flex-1">
@@ -53,5 +53,5 @@ export default function OptionsSelector() {
         )}
       </div>
     </div>
-  )
+  );
 }

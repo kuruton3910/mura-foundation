@@ -1,24 +1,33 @@
-'use client'
+"use client";
 
-import { useFormContext } from 'react-hook-form'
-import type { ReservationFormData } from '@/lib/booking/schema'
-import ReservationCalendar from '@/components/calendar/ReservationCalendar'
-import { VehicleSelector, GuestCountSelector } from '@/components/booking/GuestSelector'
-import OptionsSelector from '@/components/booking/OptionsSelector'
+import { useFormContext } from "react-hook-form";
+import type { ReservationFormData } from "@/lib/booking/schema";
+import ReservationCalendar from "@/components/calendar/ReservationCalendar";
+import {
+  VehicleSelector,
+  GuestCountSelector,
+} from "@/components/booking/GuestSelector";
+import OptionsSelector from "@/components/booking/OptionsSelector";
 
-function SectionTitle({ number, children }: { number: number; children: React.ReactNode }) {
+function SectionTitle({
+  number,
+  children,
+}: {
+  number: number;
+  children: React.ReactNode;
+}) {
   return (
     <h2 className="text-xl font-bold mb-6 flex items-center border-l-4 border-[#2D4030] pl-3">
       {number}. {children}
     </h2>
-  )
+  );
 }
 
 export default function StepConditions({ error }: { error?: string }) {
-  const { watch, setValue } = useFormContext<ReservationFormData>()
-  const isMember = watch('isMember')
-  const checkinDate = watch('checkinDate')
-  const checkoutDate = watch('checkoutDate')
+  const { watch, setValue } = useFormContext<ReservationFormData>();
+  const isMember = watch("isMember");
+  const checkinDate = watch("checkinDate");
+  const checkoutDate = watch("checkoutDate");
 
   return (
     <div className="space-y-8">
@@ -36,22 +45,26 @@ export default function StepConditions({ error }: { error?: string }) {
         {/* NAKAMA toggle */}
         <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200 flex items-center justify-between">
           <div>
-            <span className="font-bold text-amber-900">NAKAMA (賛助会員) ですか？</span>
-            <p className="text-sm text-amber-800">会員は60日前から予約可能、一般は30日前から</p>
+            <span className="font-bold text-amber-900">
+              NAKAMA (賛助会員) ですか？
+            </span>
+            <p className="text-sm text-amber-800">
+              会員は60日前から予約可能、一般は30日前から
+            </p>
           </div>
           <button
             type="button"
-            onClick={() => setValue('isMember', !isMember)}
+            onClick={() => setValue("isMember", !isMember)}
             className="relative inline-flex items-center cursor-pointer"
           >
             <div
               className={`w-11 h-6 rounded-full transition-colors ${
-                isMember ? 'bg-[#2D4030]' : 'bg-gray-200'
+                isMember ? "bg-[#2D4030]" : "bg-gray-200"
               }`}
             >
               <div
                 className={`absolute top-0.5 h-5 w-5 bg-white rounded-full shadow transition-transform ${
-                  isMember ? 'translate-x-5' : 'translate-x-0.5'
+                  isMember ? "translate-x-5" : "translate-x-0.5"
                 }`}
               />
             </div>
@@ -68,17 +81,25 @@ export default function StepConditions({ error }: { error?: string }) {
               {checkinDate && (
                 <span>
                   <span className="text-gray-500">IN: </span>
-                  <span className="font-bold">{checkinDate.getFullYear()}年{checkinDate.getMonth()+1}月{checkinDate.getDate()}日</span>
+                  <span className="font-bold">
+                    {checkinDate.getFullYear()}年{checkinDate.getMonth() + 1}月
+                    {checkinDate.getDate()}日
+                  </span>
                 </span>
               )}
               {checkoutDate && (
                 <span>
                   <span className="text-gray-500">OUT: </span>
-                  <span className="font-bold">{checkoutDate.getFullYear()}年{checkoutDate.getMonth()+1}月{checkoutDate.getDate()}日</span>
+                  <span className="font-bold">
+                    {checkoutDate.getFullYear()}年{checkoutDate.getMonth() + 1}
+                    月{checkoutDate.getDate()}日
+                  </span>
                 </span>
               )}
               {!checkoutDate && checkinDate && (
-                <span className="text-amber-600">← チェックアウト日を選択してください</span>
+                <span className="text-amber-600">
+                  ← チェックアウト日を選択してください
+                </span>
               )}
             </div>
           </div>
@@ -100,5 +121,5 @@ export default function StepConditions({ error }: { error?: string }) {
         <OptionsSelector />
       </section>
     </div>
-  )
+  );
 }
