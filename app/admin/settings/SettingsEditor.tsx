@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { SiteSettings } from "@/lib/booking/siteSettings";
 
-const MONTHS = [1,2,3,4,5,6,7,8,9,10,11,12];
+const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 function MonthDayInput({
   label,
@@ -28,7 +28,9 @@ function MonthDayInput({
           className="border border-stone-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#2D4030]"
         >
           {MONTHS.map((m) => (
-            <option key={m} value={m}>{m}月</option>
+            <option key={m} value={m}>
+              {m}月
+            </option>
           ))}
         </select>
         <input
@@ -81,7 +83,10 @@ export default function SettingsEditor({
 }) {
   const [values, setValues] = useState<SiteSettings>(initialSettings);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   function handleChange(key: keyof SiteSettings, val: number) {
     setValues((prev) => ({ ...prev, [key]: val }));
