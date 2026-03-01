@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     if (availError) throw availError;
 
     const unavailable = availability?.find(
-      (d) => d.is_closed || d.available_sites < body.vehicleCount,
+      (d) => d.is_closed || (d.available_sites ?? Infinity) < body.vehicleCount,
     );
 
     if (unavailable) {

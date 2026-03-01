@@ -12,7 +12,13 @@ export default async function AdminSettingsPage() {
     .eq("id", 1)
     .single();
 
-  const settings = { ...DEFAULT_SETTINGS, ...(data ?? {}) };
+  const settings = {
+    ...DEFAULT_SETTINGS,
+    ...(data ?? {}),
+    terms_groups: Array.isArray(data?.terms_groups) && data.terms_groups.length > 0
+      ? data.terms_groups
+      : DEFAULT_SETTINGS.terms_groups,
+  };
 
   return (
     <div className="p-8 max-w-2xl">
