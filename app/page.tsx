@@ -43,6 +43,7 @@ function validateStep3(data: ReservationFormData): string | null {
 export default function Page() {
   const [currentStep, setCurrentStep] = useState(1);
   const [stepError, setStepError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const methods = useForm<ReservationFormData>({
     resolver: zodResolver(reservationSchema),
@@ -83,8 +84,40 @@ export default function Page() {
       return;
     }
     setStepError(null);
-    // Phase 2: Stripe Checkout integration
-    alert("決済機能はPhase 2で実装予定です。");
+    setIsSubmitting(true);
+
+    try {
+      // 1. pending 予約を作成
+      const reservationRes = await fetch('/api/reservations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!reservationRes.ok) {
+        const { error: msg } = await reservationRes.json();
+        setStepError(msg || '予約の作成に失敗しました');
+        return;
+      }
+      const { reservationId } = await reservationRes.json();
+
+      // 2. Stripe Checkout セッションを作成してリダイレクト
+      const checkoutRes = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reservationId }),
+      });
+      if (!checkoutRes.ok) {
+        const { error: msg } = await checkoutRes.json();
+        setStepError(msg || '決済セッションの作成に失敗しました');
+        return;
+      }
+      const { checkoutUrl } = await checkoutRes.json();
+      window.location.href = checkoutUrl;
+    } catch {
+      setStepError('通信エラーが発生しました。もう一度お試しください。');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -133,6 +166,7 @@ export default function Page() {
                 currentStep={currentStep}
                 onNext={currentStep === 4 ? handleSubmit : handleNext}
                 onPrev={handlePrev}
+                isSubmitting={isSubmitting}
               />
             </div>
           </div>
