@@ -59,9 +59,8 @@ export type DailyAvailability = {
 export type Coupon = {
   id: string;
   code: string;
-  description: string | null;
-  discount_type: "percentage" | "fixed";
-  discount_value: number;
+  discount_percent: number;
+  is_member_only: boolean;
   valid_from: string | null;
   valid_until: string | null;
   max_uses: number | null;

@@ -29,7 +29,10 @@ export default function OptionsEditor() {
   const [saving, setSaving] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [form, setForm] = useState<RentalOption>(EMPTY_OPTION);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchOptions();
@@ -160,8 +163,9 @@ export default function OptionsEditor() {
                 </span>
               </div>
               <div className="text-sm text-stone-500 mt-0.5">
-                ¥{opt.price_per_unit.toLocaleString()} / 1{opt.unit_label}
-                {" "}・最大{opt.max_count}{opt.unit_label}
+                ¥{opt.price_per_unit.toLocaleString()} / 1{opt.unit_label}{" "}
+                ・最大{opt.max_count}
+                {opt.unit_label}
                 {opt.description && (
                   <span className="ml-2 text-stone-400">{opt.description}</span>
                 )}
@@ -233,7 +237,9 @@ export default function OptionsEditor() {
               <input
                 type="text"
                 value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
+                }
                 placeholder="例：ファミリーテント、前室付き"
                 className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4030]/40"
               />
@@ -247,7 +253,9 @@ export default function OptionsEditor() {
                 type="number"
                 min={0}
                 value={form.price_per_unit}
-                onChange={(e) => setForm({ ...form, price_per_unit: Number(e.target.value) })}
+                onChange={(e) =>
+                  setForm({ ...form, price_per_unit: Number(e.target.value) })
+                }
                 className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4030]/40"
               />
             </div>
@@ -259,7 +267,9 @@ export default function OptionsEditor() {
               <input
                 type="text"
                 value={form.unit_label}
-                onChange={(e) => setForm({ ...form, unit_label: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, unit_label: e.target.value })
+                }
                 placeholder="例：張、台、個、本"
                 className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4030]/40"
               />
@@ -274,7 +284,9 @@ export default function OptionsEditor() {
                 min={1}
                 max={20}
                 value={form.max_count}
-                onChange={(e) => setForm({ ...form, max_count: Number(e.target.value) })}
+                onChange={(e) =>
+                  setForm({ ...form, max_count: Number(e.target.value) })
+                }
                 className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4030]/40"
               />
             </div>
@@ -287,7 +299,9 @@ export default function OptionsEditor() {
                 type="number"
                 min={0}
                 value={form.sort_order}
-                onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })}
+                onChange={(e) =>
+                  setForm({ ...form, sort_order: Number(e.target.value) })
+                }
                 className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4030]/40"
               />
             </div>
@@ -297,7 +311,9 @@ export default function OptionsEditor() {
                 type="checkbox"
                 id="is_active"
                 checked={form.is_active}
-                onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+                onChange={(e) =>
+                  setForm({ ...form, is_active: e.target.checked })
+                }
                 className="w-4 h-4 accent-[#2D4030]"
               />
               <label htmlFor="is_active" className="text-sm text-stone-700">
