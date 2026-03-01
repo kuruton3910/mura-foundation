@@ -34,6 +34,7 @@ export type Reservation = {
   status: ReservationStatus;
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
+  is_exclusive: boolean;
   created_at: string;
   updated_at: string;
 };

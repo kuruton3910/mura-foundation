@@ -16,6 +16,7 @@ export const reservationSchema = z.object({
   guestPhone: z.string(),
   notes: z.string(),
   couponCode: z.string(),
+  isExclusive: z.boolean(),
 });
 
 export type ReservationFormData = z.infer<typeof reservationSchema>;
@@ -35,4 +36,5 @@ export const defaultFormValues: ReservationFormData = {
   guestPhone: "",
   notes: "",
   couponCode: "",
+  isExclusive: false,
 };

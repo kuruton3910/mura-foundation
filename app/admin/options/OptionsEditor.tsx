@@ -11,6 +11,7 @@ type RentalOption = {
   max_count: number;
   is_active: boolean;
   sort_order: number;
+  is_exclusive_only: boolean;
 };
 
 const EMPTY_OPTION: RentalOption = {
@@ -21,6 +22,7 @@ const EMPTY_OPTION: RentalOption = {
   max_count: 5,
   is_active: true,
   sort_order: 0,
+  is_exclusive_only: false,
 };
 
 export default function OptionsEditor() {
@@ -161,6 +163,11 @@ export default function OptionsEditor() {
                 >
                   {opt.is_active ? "公開中" : "非公開"}
                 </span>
+                {opt.is_exclusive_only && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                    貸し切り専用
+                  </span>
+                )}
               </div>
               <div className="text-sm text-stone-500 mt-0.5">
                 ¥{opt.price_per_unit.toLocaleString()} / 1{opt.unit_label}{" "}
@@ -318,6 +325,21 @@ export default function OptionsEditor() {
               />
               <label htmlFor="is_active" className="text-sm text-stone-700">
                 公開する（チェックを外すと予約フォームに表示されません）
+              </label>
+            </div>
+
+            <div className="col-span-2 flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="is_exclusive_only"
+                checked={form.is_exclusive_only}
+                onChange={(e) =>
+                  setForm({ ...form, is_exclusive_only: e.target.checked })
+                }
+                className="w-4 h-4 accent-purple-600"
+              />
+              <label htmlFor="is_exclusive_only" className="text-sm text-stone-700">
+                貸し切り専用（チェックを入れると貸し切りリクエスト時のみ表示されます）
               </label>
             </div>
           </div>

@@ -31,10 +31,12 @@ export async function POST(request: NextRequest) {
     const supabase = createServerClient();
 
     // ── レンタルオプション一覧を取得 ──────────────────────────────────
+    const isExclusive = body.isExclusive === true;
     const { data: optionsData } = await supabase
       .from("rental_options")
       .select("id, name, price_per_unit, unit_label, max_count, description")
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .eq("is_exclusive_only", isExclusive);
     const options: RentalOption[] = optionsData ?? [];
 
     // ── サイト設定をDBから取得 ────────────────────────────────────────
@@ -123,21 +125,33 @@ export async function POST(request: NextRequest) {
 
     const { data: availability, error: availError } = await supabase
       .from("daily_availability")
-      .select("date, available_sites, is_closed")
+      .select("date, available_sites, booked_sites, max_sites, is_closed")
       .gte("date", checkinStr)
       .lt("date", checkoutStr);
 
     if (availError) throw availError;
 
-    const unavailable = availability?.find(
-      (d) => d.is_closed || (d.available_sites ?? Infinity) < body.vehicleCount,
-    );
-
-    if (unavailable) {
-      return NextResponse.json(
-        { error: `${unavailable.date} は空き区画が不足しています` },
-        { status: 409 },
+    // 貸し切りリクエストの場合: 全日程で全枠が空いている必要がある
+    if (isExclusive) {
+      const notAllFree = availability?.find(
+        (d) => d.is_closed || (d.booked_sites ?? 1) > 0,
       );
+      if (notAllFree) {
+        return NextResponse.json(
+          { error: `${notAllFree.date} にすでに予約が入っているため、貸し切りリクエストはできません` },
+          { status: 409 },
+        );
+      }
+    } else {
+      const unavailable = availability?.find(
+        (d) => d.is_closed || (d.available_sites ?? Infinity) < body.vehicleCount,
+      );
+      if (unavailable) {
+        return NextResponse.json(
+          { error: `${unavailable.date} は空き区画が不足しています` },
+          { status: 409 },
+        );
+      }
     }
 
     // 合計金額の計算（サーバー側で再計算してフロントの改ざん防止）
@@ -222,6 +236,7 @@ export async function POST(request: NextRequest) {
         discount_amount: discountAmount,
         terms_agreed_at: new Date().toISOString(),
         status: "pending",
+        is_exclusive: isExclusive,
       })
       .select("id")
       .single();

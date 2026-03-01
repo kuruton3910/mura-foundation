@@ -42,14 +42,15 @@ export default function OrderSummary({
   const { watch, setValue } = useFormContext<ReservationFormData>();
   const data = watch();
   const nights = calcNights(data.checkinDate, data.checkoutDate);
+  const isExclusive = data.isExclusive ?? false;
   const [options, setOptions] = useState<RentalOption[]>([]);
 
   useEffect(() => {
-    fetch("/api/options")
+    fetch(`/api/options?exclusive=${isExclusive}`)
       .then((r) => r.json())
       .then((d) => setOptions(Array.isArray(d) ? d : []))
       .catch(() => {});
-  }, []);
+  }, [isExclusive]);
 
   const baseTotal = calcTotal(data, options);
   const breakdown = calcBreakdown(data, options);
@@ -107,6 +108,11 @@ export default function OrderSummary({
       <div className="bg-white rounded-xl shadow-lg border border-stone-200 overflow-hidden">
         <div className="bg-[#2D4030] text-white p-4 font-bold text-center">
           現在の予約内容
+          {isExclusive && (
+            <span className="ml-2 text-xs bg-purple-400 text-white px-2 py-0.5 rounded-full">
+              貸し切り
+            </span>
+          )}
         </div>
         <div className="p-6 space-y-5">
           {/* Dates */}

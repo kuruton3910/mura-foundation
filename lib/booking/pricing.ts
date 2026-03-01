@@ -23,6 +23,7 @@ export type RentalOption = {
   price_per_unit: number;
   unit_label: string;
   max_count: number;
+  is_exclusive_only?: boolean;
 };
 
 /** 金曜・土曜始まりの夜はウィークエンド料金 */

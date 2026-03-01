@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
           max_count: body.max_count ?? 5,
           is_active: body.is_active ?? true,
           sort_order: body.sort_order ?? 0,
+          is_exclusive_only: body.is_exclusive_only ?? false,
         })
         .eq("id", body.id)
         .select()
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
         max_count: body.max_count ?? 5,
         is_active: body.is_active ?? true,
         sort_order: body.sort_order ?? 0,
+        is_exclusive_only: body.is_exclusive_only ?? false,
       })
       .select()
       .single();

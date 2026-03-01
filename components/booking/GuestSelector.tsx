@@ -44,14 +44,16 @@ function CounterRow({ label, sublabel, field, min, max }: CounterRowProps) {
   );
 }
 
-export function VehicleSelector() {
+export function VehicleSelector({ disabled }: { disabled?: boolean }) {
   return (
     <div>
       <label className="block font-bold mb-2">車両台数（区画数）</label>
       <p className="text-xs text-gray-500 mb-3">
         ※1台につき1区画の予約となります。
       </p>
-      <CounterRow label="車両・区画" field="vehicleCount" min={1} max={5} />
+      <div className={disabled ? "pointer-events-none opacity-60" : ""}>
+        <CounterRow label="車両・区画" field="vehicleCount" min={1} max={5} />
+      </div>
     </div>
   );
 }

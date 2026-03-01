@@ -5,19 +5,20 @@ import { useFormContext } from "react-hook-form";
 import type { ReservationFormData } from "@/lib/booking/schema";
 import type { RentalOption } from "@/lib/booking/pricing";
 
-export default function OptionsSelector() {
+export default function OptionsSelector({ exclusive = false }: { exclusive?: boolean }) {
   const { watch, setValue } = useFormContext<ReservationFormData>();
   const optionCounts = watch("optionCounts") ?? {};
   const [options, setOptions] = useState<RentalOption[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/options")
+    setLoading(true);
+    fetch(`/api/options?exclusive=${exclusive}`)
       .then((r) => r.json())
       .then((data) => setOptions(Array.isArray(data) ? data : []))
       .catch(() => setOptions([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [exclusive]);
 
   function setCount(optionId: string, count: number) {
     setValue("optionCounts", { ...optionCounts, [optionId]: count });
