@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 type Override = {
   id: string;
   date: string;
-  available_sites: number | null;
+  max_sites: number | null;
   is_closed: boolean;
 };
 
@@ -52,7 +52,60 @@ export default function AvailabilityEditor({
     () => new Map(overrides.map((o) => [o.date, o])),
   );
 
+  // 一括設定の状態
+  const [bulkFrom, setBulkFrom] = useState("");
+  const [bulkTo, setBulkTo] = useState("");
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
   const dates = buildDateList(fromDate, toDate);
+
+  async function handleBulkClose() {
+    if (!bulkFrom || !bulkTo || bulkFrom > bulkTo) {
+      setBulkMessage({ type: "error", text: "日付範囲を正しく入力してください" });
+      return;
+    }
+    setBulkSaving(true);
+    setBulkMessage(null);
+    const res = await fetch("/api/admin/availability", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ from: bulkFrom, to: bulkTo, is_closed: true }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setBulkMessage({ type: "success", text: `${data.count}日間を休業に設定しました` });
+      router.refresh();
+    } else {
+      setBulkMessage({ type: "error", text: "設定に失敗しました" });
+    }
+    setBulkSaving(false);
+  }
+
+  async function handleBulkOpen() {
+    if (!bulkFrom || !bulkTo || bulkFrom > bulkTo) {
+      setBulkMessage({ type: "error", text: "日付範囲を正しく入力してください" });
+      return;
+    }
+    setBulkSaving(true);
+    setBulkMessage(null);
+    const res = await fetch("/api/admin/availability", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ from: bulkFrom, to: bulkTo }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setBulkMessage({ type: "success", text: `${data.count}日間の休業設定を解除しました` });
+      router.refresh();
+    } else {
+      setBulkMessage({ type: "error", text: "解除に失敗しました" });
+    }
+    setBulkSaving(false);
+  }
 
   async function toggleClosed(date: string) {
     const existing = overrideMap.get(date);
@@ -111,7 +164,60 @@ export default function AvailabilityEditor({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* 一括設定パネル */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+        <h2 className="font-bold text-amber-900 mb-1">シーズン一括設定</h2>
+        <p className="text-xs text-amber-700 mb-4">
+          クローズシーズン（例：11月〜3月）をまとめて休業設定できます
+        </p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-stone-500">開始日</label>
+            <input
+              type="date"
+              value={bulkFrom}
+              onChange={(e) => setBulkFrom(e.target.value)}
+              className="border border-stone-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400"
+            />
+          </div>
+          <span className="text-stone-400 pb-1">〜</span>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-stone-500">終了日</label>
+            <input
+              type="date"
+              value={bulkTo}
+              onChange={(e) => setBulkTo(e.target.value)}
+              className="border border-stone-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400"
+            />
+          </div>
+          <button
+            onClick={handleBulkClose}
+            disabled={bulkSaving}
+            className="px-4 py-1.5 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 transition-colors disabled:opacity-50"
+          >
+            {bulkSaving ? "処理中..." : "一括休業にする"}
+          </button>
+          <button
+            onClick={handleBulkOpen}
+            disabled={bulkSaving}
+            className="px-4 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded hover:bg-emerald-700 transition-colors disabled:opacity-50"
+          >
+            {bulkSaving ? "処理中..." : "一括解除する"}
+          </button>
+        </div>
+        {bulkMessage && (
+          <p
+            className={`mt-3 text-sm font-medium ${
+              bulkMessage.type === "success" ? "text-emerald-700" : "text-red-600"
+            }`}
+          >
+            {bulkMessage.text}
+          </p>
+        )}
+      </div>
+
+      {/* 日別設定 */}
       {Object.entries(months).map(([month, monthDates]) => (
         <div
           key={month}
@@ -129,7 +235,7 @@ export default function AvailabilityEditor({
             {monthDates.map((date) => {
               const ov = overrideMap.get(date);
               const booked = getBookedCount(date, reservations);
-              const maxSites = ov?.available_sites ?? DEFAULT_SITES;
+              const maxSites = ov?.max_sites ?? DEFAULT_SITES;
               const isClosed = ov?.is_closed ?? false;
               const available = isClosed ? 0 : maxSites - booked;
               const isSaving = saving === date;

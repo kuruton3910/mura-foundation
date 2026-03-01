@@ -88,33 +88,33 @@ export default function Page() {
 
     try {
       // 1. pending 予約を作成
-      const reservationRes = await fetch('/api/reservations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const reservationRes = await fetch("/api/reservations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
       if (!reservationRes.ok) {
         const { error: msg } = await reservationRes.json();
-        setStepError(msg || '予約の作成に失敗しました');
+        setStepError(msg || "予約の作成に失敗しました");
         return;
       }
       const { reservationId } = await reservationRes.json();
 
       // 2. Stripe Checkout セッションを作成してリダイレクト
-      const checkoutRes = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const checkoutRes = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reservationId }),
       });
       if (!checkoutRes.ok) {
         const { error: msg } = await checkoutRes.json();
-        setStepError(msg || '決済セッションの作成に失敗しました');
+        setStepError(msg || "決済セッションの作成に失敗しました");
         return;
       }
       const { checkoutUrl } = await checkoutRes.json();
       window.location.href = checkoutUrl;
     } catch {
-      setStepError('通信エラーが発生しました。もう一度お試しください。');
+      setStepError("通信エラーが発生しました。もう一度お試しください。");
     } finally {
       setIsSubmitting(false);
     }
@@ -128,14 +128,19 @@ export default function Page() {
           <div className="container mx-auto px-4 flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold tracking-wider">
-                MURA CAMPING GROUND
+                NPO MURA FOUNDATION
               </h1>
               <p className="text-sm opacity-80">オンライン予約システム</p>
             </div>
             <div className="hidden md:block">
-              <span className="bg-white/10 px-4 py-2 rounded-full text-sm">
+              <a
+                href="https://www.murafoundation.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-white/10 px-4 py-2 rounded-full text-sm hover:bg-white/20 transition-colors inline-block"
+              >
                 www.murafoundation.com
-              </span>
+              </a>
             </div>
           </div>
         </header>
@@ -174,7 +179,7 @@ export default function Page() {
 
         {/* Footer */}
         <footer className="bg-stone-200 py-8 text-center text-stone-500 text-sm">
-          &copy; 2026 MURA CAMPING GROUND. Powered by murafoundation.com
+          &copy; 2025 by MURA. Proudly created by HelloPrim
         </footer>
       </div>
     </FormProvider>

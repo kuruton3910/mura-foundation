@@ -18,6 +18,12 @@ export function calcNights(
   return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
 }
 
+/** クーポン割引の対象となる区画料のみを計算 */
+export function calcSiteFee(data: ReservationFormData): number {
+  const nights = calcNights(data.checkinDate, data.checkoutDate);
+  return data.vehicleCount * PRICES.sitePerNight * nights;
+}
+
 export function calcTotal(data: ReservationFormData): number {
   const nights = calcNights(data.checkinDate, data.checkoutDate);
   if (nights === 0) return 0;

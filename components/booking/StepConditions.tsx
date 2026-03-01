@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import type { ReservationFormData } from "@/lib/booking/schema";
 import ReservationCalendar from "@/components/calendar/ReservationCalendar";
@@ -8,6 +9,7 @@ import {
   GuestCountSelector,
 } from "@/components/booking/GuestSelector";
 import OptionsSelector from "@/components/booking/OptionsSelector";
+import { DEFAULT_SETTINGS, type SiteSettings } from "@/lib/booking/siteSettings";
 
 function SectionTitle({
   number,
@@ -29,6 +31,15 @@ export default function StepConditions({ error }: { error?: string }) {
   const checkinDate = watch("checkinDate");
   const checkoutDate = watch("checkoutDate");
 
+  const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((data) => setSettings({ ...DEFAULT_SETTINGS, ...data }))
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="space-y-8">
       {/* Step validation error */}
@@ -49,7 +60,7 @@ export default function StepConditions({ error }: { error?: string }) {
               NAKAMA (賛助会員) ですか？
             </span>
             <p className="text-sm text-amber-800">
-              会員は60日前から予約可能、一般は30日前から
+              会員は{settings.booking_window_member_days}日前から予約可能、一般は{settings.booking_window_days}日前から
             </p>
           </div>
           <button
@@ -69,6 +80,18 @@ export default function StepConditions({ error }: { error?: string }) {
               />
             </div>
           </button>
+        </div>
+
+        {/* Season info */}
+        <div className="mb-4 p-3 bg-stone-50 border border-stone-200 rounded-lg text-xs text-stone-600 flex flex-wrap gap-x-4 gap-y-1">
+          <span>
+            <span className="font-medium">シーズン：</span>
+            {settings.season_open_month}月{settings.season_open_day}日オープン〜{settings.season_close_month}月{settings.season_close_day}日クローズ
+          </span>
+          <span>
+            <span className="font-medium text-amber-700">NAKAMA会員：</span>
+            {settings.member_close_month}月{settings.member_close_day}日まで予約可能
+          </span>
         </div>
 
         {/* Calendar */}

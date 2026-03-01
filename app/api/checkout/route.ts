@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
             currency: "jpy",
             product_data: {
               name: "MURA CAMPING GROUND 宿泊予約",
-              description: `${reservation.checkin_date} 〜 ${reservation.checkout_date} / ${reservation.vehicle_count}区画 / 大人${reservation.adults}名`,
+              description: `${reservation.checkin_date} 〜 ${reservation.checkout_date} / ${reservation.vehicle_count}区画 / 大人${reservation.adults}名${reservation.discount_amount > 0 ? ` / クーポン割引 -¥${reservation.discount_amount.toLocaleString()}` : ""}`,
             },
             unit_amount: reservation.total_amount,
           },

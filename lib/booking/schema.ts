@@ -17,6 +17,7 @@ export const reservationSchema = z.object({
   guestEmail: z.string(),
   guestPhone: z.string(),
   notes: z.string(),
+  couponCode: z.string(),
 });
 
 export type ReservationFormData = z.infer<typeof reservationSchema>;
@@ -38,4 +39,5 @@ export const defaultFormValues: ReservationFormData = {
   guestEmail: "",
   guestPhone: "",
   notes: "",
+  couponCode: "",
 };

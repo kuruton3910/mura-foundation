@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/admin/reservations", label: "予約一覧", icon: "📋" },
   { href: "/admin/availability", label: "空き状況管理", icon: "📅" },
   { href: "/admin/coupons", label: "クーポン管理", icon: "🎫" },
+  { href: "/admin/settings", label: "サイト設定", icon: "⚙️" },
 ];
 
 export default function AdminLayout({

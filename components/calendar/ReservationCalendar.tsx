@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useFormContext } from 'react-hook-form'
 import type { ReservationFormData } from '@/lib/booking/schema'
 import type { DailyAvailability } from '@/lib/supabase/types'
+import { DEFAULT_SETTINGS, type SiteSettings } from '@/lib/booking/siteSettings'
 
 const DOW_LABELS = ['日', '月', '火', '水', '木', '金', '土']
 
@@ -26,6 +27,48 @@ function toDateStr(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
+type DateStatus =
+  | 'available'
+  | 'full'
+  | 'past'
+  | 'too_far'       // 予約受付前（まだ早すぎる）
+  | 'pre_season'    // シーズン前
+  | 'post_season'   // シーズン後（一般客またはNAKAMAも期間外）
+  | 'closed'        // 管理者設定で休業
+
+function getDateStatus(
+  date: Date,
+  today: Date,
+  maxBookableDate: Date,
+  isMember: boolean,
+  spots: number | null,
+  s: SiteSettings,
+): DateStatus {
+  if (date < today) return 'past'
+
+  const y = date.getFullYear()
+  const seasonOpen  = new Date(y, s.season_open_month - 1,   s.season_open_day)
+  const seasonClose = new Date(y, s.season_close_month - 1,  s.season_close_day)
+  const memberClose = new Date(y, s.member_close_month - 1,  s.member_close_day)
+
+  if (date < seasonOpen) return 'pre_season'
+
+  // 一般客はシーズン終了後に予約不可
+  if (!isMember && date > seasonClose) return 'post_season'
+
+  // NAKAMA会員もメンバー期間終了後は予約不可
+  if (isMember && date > memberClose) return 'post_season'
+
+  // 予約受付期間外
+  if (date > maxBookableDate) return 'too_far'
+
+  // 管理者クローズまたは満室
+  if (spots === null) return 'closed'
+  if (spots === 0) return 'full'
+
+  return 'available'
+}
+
 export default function ReservationCalendar() {
   const { setValue, watch } = useFormContext<ReservationFormData>()
   const checkinDate = watch('checkinDate')
@@ -36,15 +79,24 @@ export default function ReservationCalendar() {
   const [viewYear, setViewYear] = useState(today.getFullYear())
   const [viewMonth, setViewMonth] = useState(today.getMonth())
 
-  // availability: date文字列 → DailyAvailability
   const [availability, setAvailability] = useState<Map<string, DailyAvailability>>(new Map())
   const [loadingAvail, setLoadingAvail] = useState(false)
+  const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS)
 
-  const maxDaysAhead = isMember ? 60 : 30
+  // 設定を取得（初回のみ）
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((r) => r.json())
+      .then((data) => setSettings({ ...DEFAULT_SETTINGS, ...data }))
+      .catch(() => {}) // フォールバック: DEFAULT_SETTINGS のまま
+  }, [])
+
+  const maxDaysAhead = isMember
+    ? settings.booking_window_member_days
+    : settings.booking_window_days
   const maxBookableDate = new Date(today)
   maxBookableDate.setDate(maxBookableDate.getDate() + maxDaysAhead)
 
-  // 表示月の空き状況を取得
   const fetchAvailability = useCallback(async (year: number, month: number) => {
     setLoadingAvail(true)
     try {
@@ -59,7 +111,6 @@ export default function ReservationCalendar() {
       }
       setAvailability(map)
     } catch {
-      // APIエラー時はフォールバック（全日空きありとして扱う）
       setAvailability(new Map())
     } finally {
       setLoadingAvail(false)
@@ -72,7 +123,7 @@ export default function ReservationCalendar() {
 
   function getAvailableSpots(date: Date): number | null {
     const avail = availability.get(toDateStr(date))
-    if (!avail) return 5 // データなし = デフォルト空きあり
+    if (!avail) return 5
     if (avail.is_closed) return null
     return avail.available_sites
   }
@@ -88,10 +139,9 @@ export default function ReservationCalendar() {
   }
 
   function handleDateClick(date: Date) {
-    if (date < today) return
-    if (date > maxBookableDate) return
     const spots = getAvailableSpots(date)
-    if (spots === null || spots === 0) return
+    const status = getDateStatus(date, today, maxBookableDate, isMember, spots, settings)
+    if (status !== 'available') return
 
     if (!checkinDate || (checkinDate && checkoutDate)) {
       setValue('checkinDate', date)
@@ -129,64 +179,107 @@ export default function ReservationCalendar() {
   }
 
   function getCellStyle(date: Date, isCurrentMonth: boolean) {
+    if (!isCurrentMonth) {
+      return { cell: 'bg-white p-2 h-20 flex flex-col items-center opacity-20', text: '', badge: '', badgeCls: '' }
+    }
     const d = startOfDay(date)
-    const isPast = d < today
-    const isTooFar = d > maxBookableDate
     const spots = getAvailableSpots(d)
-    const isFull = spots === null || spots === 0
+    const status = getDateStatus(d, today, maxBookableDate, isMember, spots, settings)
+
     const isCheckin = checkinDate && isSameDay(d, checkinDate)
     const isCheckout = checkoutDate && isSameDay(d, checkoutDate)
-    const isInRange =
-      checkinDate && checkoutDate &&
-      d > checkinDate && d < checkoutDate
+    const isInRange = checkinDate && checkoutDate && d > checkinDate && d < checkoutDate
 
-    if (!isCurrentMonth) return { cell: 'bg-white p-2 h-20 flex flex-col items-center opacity-20', text: '', spots: '', spotsLabel: '' }
+    if (isCheckin) return {
+      cell: 'bg-[#2D4030] p-2 h-20 flex flex-col items-center cursor-pointer rounded-l-lg',
+      text: 'text-white font-bold',
+      badge: 'IN', badgeCls: 'text-[10px] mt-1 text-emerald-200',
+    }
+    if (isCheckout) return {
+      cell: 'bg-[#2D4030] p-2 h-20 flex flex-col items-center cursor-pointer rounded-r-lg',
+      text: 'text-white font-bold',
+      badge: 'OUT', badgeCls: 'text-[10px] mt-1 text-emerald-200',
+    }
+    if (isInRange) return {
+      cell: 'bg-emerald-100 p-2 h-20 flex flex-col items-center cursor-pointer',
+      text: 'text-[#2D4030]',
+      badge: `残${spots}`, badgeCls: 'text-[10px] mt-1 text-[#2D4030]',
+    }
 
-    if (isPast || isTooFar || isFull) {
-      return {
-        cell: 'bg-white p-2 h-20 flex flex-col items-center opacity-30 cursor-not-allowed',
-        text: 'text-gray-400',
-        spots: isFull && isCurrentMonth ? 'text-red-400 text-[10px] mt-1' : '',
-        spotsLabel: isFull && isCurrentMonth && !isPast && !isTooFar ? '×' : '',
-      }
-    }
-    if (isCheckin) {
-      return {
-        cell: 'bg-[#2D4030] p-2 h-20 flex flex-col items-center cursor-pointer rounded-l-lg',
-        text: 'text-white font-bold',
-        spots: 'text-[10px] mt-1 text-emerald-200',
-        spotsLabel: 'IN',
-      }
-    }
-    if (isCheckout) {
-      return {
-        cell: 'bg-[#2D4030] p-2 h-20 flex flex-col items-center cursor-pointer rounded-r-lg',
-        text: 'text-white font-bold',
-        spots: 'text-[10px] mt-1 text-emerald-200',
-        spotsLabel: 'OUT',
-      }
-    }
-    if (isInRange) {
-      return {
-        cell: 'bg-emerald-100 p-2 h-20 flex flex-col items-center cursor-pointer',
-        text: 'text-[#2D4030]',
-        spots: 'text-[10px] mt-1 text-[#2D4030]',
-        spotsLabel: `残${spots}`,
-      }
-    }
-    return {
-      cell: 'bg-white p-2 h-20 flex flex-col items-center hover:bg-green-50 cursor-pointer border-2 border-transparent hover:border-[#2D4030] transition-all',
-      text: '',
-      spots: 'text-[10px] mt-1 text-[#2D4030]',
-      spotsLabel: `残${spots}`,
+    switch (status) {
+      case 'available':
+        return {
+          cell: 'bg-white p-2 h-20 flex flex-col items-center hover:bg-green-50 cursor-pointer border-2 border-transparent hover:border-[#2D4030] transition-all',
+          text: '', badge: `残${spots}`, badgeCls: 'text-[10px] mt-1 text-[#2D4030]',
+        }
+      case 'full':
+        return {
+          cell: 'bg-white p-2 h-20 flex flex-col items-center opacity-40 cursor-not-allowed',
+          text: 'text-gray-400', badge: '×', badgeCls: 'text-[10px] mt-1 text-red-400',
+        }
+      case 'past':
+        return {
+          cell: 'bg-white p-2 h-20 flex flex-col items-center opacity-25 cursor-not-allowed',
+          text: 'text-gray-400', badge: '', badgeCls: '',
+        }
+      case 'too_far':
+        return {
+          cell: 'bg-stone-50 p-2 h-20 flex flex-col items-center opacity-40 cursor-not-allowed',
+          text: 'text-stone-400', badge: '受付前', badgeCls: 'text-[9px] mt-1 text-stone-400',
+        }
+      case 'pre_season':
+        return {
+          cell: 'bg-blue-50 p-2 h-20 flex flex-col items-center opacity-40 cursor-not-allowed',
+          text: 'text-blue-300', badge: '準備中', badgeCls: 'text-[9px] mt-1 text-blue-400',
+        }
+      case 'post_season':
+        return {
+          cell: 'bg-amber-50 p-2 h-20 flex flex-col items-center opacity-50 cursor-not-allowed',
+          text: 'text-amber-600', badge: 'NAKAMA', badgeCls: 'text-[9px] mt-1 text-amber-500',
+        }
+      case 'closed':
+        return {
+          cell: 'bg-red-50 p-2 h-20 flex flex-col items-center opacity-40 cursor-not-allowed',
+          text: 'text-red-300', badge: '休業', badgeCls: 'text-[9px] mt-1 text-red-400',
+        }
+      default:
+        return {
+          cell: 'bg-white p-2 h-20 flex flex-col items-center opacity-30 cursor-not-allowed',
+          text: 'text-gray-400', badge: '', badgeCls: '',
+        }
     }
   }
 
   const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月']
   const canGoPrev = !(viewYear === today.getFullYear() && viewMonth <= today.getMonth())
 
+  // シーズン後・NAKAMA限定月を表示中かどうか
+  const isNakamaBanner =
+    !isMember &&
+    (viewMonth + 1 > settings.season_close_month ||
+      (viewMonth + 1 === settings.season_close_month &&
+        /* 月全体が対象 */ false)) &&
+    viewMonth + 1 <= settings.member_close_month
+
   return (
     <div className="border rounded-lg overflow-hidden">
+      {/* NAKAMA限定バナー */}
+      {isNakamaBanner && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800">
+          {settings.season_close_month}月以降の予約は<strong>NAKAMAメンバー限定</strong>です。
+          上の「NAKAMAメンバー」をオンにするとご予約いただけます。
+        </div>
+      )}
+
+      {/* 予約受付期間バナー */}
+      <div className="bg-stone-50 border-b border-stone-200 px-4 py-2 text-xs text-stone-600 flex items-center gap-2">
+        <span className="font-medium">予約受付期間：</span>
+        {isMember
+          ? <span className="text-[#2D4030] font-bold">本日から{settings.booking_window_member_days}日先まで（NAKAMAメンバー）</span>
+          : <span>本日から{settings.booking_window_days}日先まで（一般のお客様）</span>
+        }
+      </div>
+
       <div className="bg-stone-100 p-4 flex justify-between items-center border-b">
         <button
           type="button"
@@ -236,19 +329,20 @@ export default function ReservationCalendar() {
               >
                 {date.getDate()}
               </span>
-              {style.spotsLabel && (
-                <span className={style.spots}>{style.spotsLabel}</span>
+              {style.badge && (
+                <span className={style.badgeCls}>{style.badge}</span>
               )}
             </div>
           )
         })}
       </div>
 
-      <div className="p-3 bg-stone-50 border-t flex flex-wrap gap-4 text-xs text-stone-500">
+      <div className="p-3 bg-stone-50 border-t flex flex-wrap gap-3 text-xs text-stone-500">
         <span className="flex items-center gap-1"><span className="w-3 h-3 bg-[#2D4030] rounded inline-block" /> 選択中</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-100 border border-[#2D4030] rounded inline-block" /> 範囲内</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 bg-white border border-gray-300 rounded inline-block" /> 空きあり</span>
-        <span className="flex items-center gap-1 opacity-40"><span className="w-3 h-3 bg-gray-200 rounded inline-block" /> 満室/不可</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 bg-amber-50 border border-amber-200 rounded inline-block" /> NAKAMA限定</span>
+        <span className="flex items-center gap-1 opacity-40"><span className="w-3 h-3 bg-gray-200 rounded inline-block" /> 予約不可</span>
       </div>
     </div>
   )

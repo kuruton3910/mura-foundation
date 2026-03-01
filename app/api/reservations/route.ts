@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
-import { calcTotal } from "@/lib/booking/pricing";
+import { calcTotal, calcSiteFee } from "@/lib/booking/pricing";
 import type { ReservationFormData } from "@/lib/booking/schema";
+import { DEFAULT_SETTINGS } from "@/lib/booking/siteSettings";
 
 // POST /api/reservations — pending 予約を作成して reservation_id を返す
 export async function POST(request: NextRequest) {
   try {
-    const body: ReservationFormData = await request.json();
+    const body: ReservationFormData & { couponCode?: string } =
+      await request.json();
 
     // 日付の検証
     const checkin = new Date(body.checkinDate as unknown as string);
@@ -16,19 +18,77 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "日付が無効です" }, { status: 400 });
     }
 
-    // 必須項目の検証
-    if (
-      !body.guestName?.trim() ||
-      !body.guestEmail?.trim() ||
-      !body.guestPhone?.trim()
-    ) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (checkin < today) {
       return NextResponse.json(
-        { error: "予約者情報が不足しています" },
+        { error: "過去の日付は予約できません" },
         { status: 400 },
       );
     }
 
     const supabase = createServerClient();
+
+    // ── サイト設定をDBから取得 ────────────────────────────────────────
+    const { data: settingsData } = await supabase
+      .from("site_settings")
+      .select("*")
+      .eq("id", 1)
+      .single();
+    const settings = { ...DEFAULT_SETTINGS, ...(settingsData ?? {}) };
+
+    // ── 予約受付期間チェック ──────────────────────────────────────────
+    const maxDays = body.isMember
+      ? settings.booking_window_member_days
+      : settings.booking_window_days;
+    const maxDate = new Date(today);
+    maxDate.setDate(maxDate.getDate() + maxDays);
+
+    if (checkin > maxDate) {
+      return NextResponse.json(
+        {
+          error: `${body.isMember ? "NAKAMAメンバー" : "一般のお客様"}は${maxDays}日先までの予約が可能です。この日程はまだ予約受付開始前です。`,
+        },
+        { status: 400 },
+      );
+    }
+
+    // ── シーズン制限 ─────────────────────────────────────────────────
+    const seasonClose = new Date(
+      checkin.getFullYear(),
+      settings.season_close_month - 1,
+      settings.season_close_day,
+    );
+    const memberClose = new Date(
+      checkin.getFullYear(),
+      settings.member_close_month - 1,
+      settings.member_close_day,
+    );
+
+    if (checkin > seasonClose && !body.isMember) {
+      return NextResponse.json(
+        {
+          error: `${settings.season_close_month}月以降の予約はNAKAMAメンバーのみ受付しております。`,
+        },
+        { status: 400 },
+      );
+    }
+
+    if (checkin > memberClose) {
+      return NextResponse.json(
+        { error: "この時期は予約受付を行っておりません。" },
+        { status: 400 },
+      );
+    }
+
+    // 必須項目の検証
+    if (!body.guestName?.trim() || !body.guestEmail?.trim() || !body.guestPhone?.trim()) {
+      return NextResponse.json(
+        { error: "予約者情報が不足しています" },
+        { status: 400 },
+      );
+    }
 
     // 空き状況の確認
     const checkinStr = checkin.toISOString().split("T")[0];
@@ -59,7 +119,47 @@ export async function POST(request: NextRequest) {
       checkinDate: checkin,
       checkoutDate: checkout,
     };
-    const totalAmount = calcTotal(formDataWithDates);
+    const baseTotal = calcTotal(formDataWithDates);
+
+    // ── クーポン検証 ──────────────────────────────────────────────────
+    let discountAmount = 0;
+    let appliedCouponCode: string | null = null;
+
+    const couponCode = body.couponCode?.trim().toUpperCase();
+    if (couponCode) {
+      const today2 = new Date().toISOString().split("T")[0];
+      const { data: coupon } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("code", couponCode)
+        .eq("is_active", true)
+        .single();
+
+      if (coupon) {
+        const withinDates =
+          (!coupon.valid_from || today2 >= coupon.valid_from) &&
+          (!coupon.valid_until || today2 <= coupon.valid_until);
+        const withinUses =
+          coupon.max_uses === null || coupon.used_count < coupon.max_uses;
+        const memberOk = !coupon.is_member_only || body.isMember;
+
+        if (withinDates && withinUses && memberOk) {
+          const siteFee = calcSiteFee(formDataWithDates);
+          discountAmount = Math.floor(
+            (siteFee * coupon.discount_percent) / 100,
+          );
+          appliedCouponCode = couponCode;
+
+          // used_count をインクリメント
+          await supabase
+            .from("coupons")
+            .update({ used_count: coupon.used_count + 1 })
+            .eq("id", coupon.id);
+        }
+      }
+    }
+
+    const totalAmount = Math.max(0, baseTotal - discountAmount);
 
     // 予約を pending で作成
     const { data: reservation, error: insertError } = await supabase
@@ -81,6 +181,9 @@ export async function POST(request: NextRequest) {
         rental_firepit: body.rentalFirepit,
         rental_firepit_count: body.rentalFirepit ? body.rentalFirepitCount : 0,
         total_amount: totalAmount,
+        coupon_code: appliedCouponCode,
+        discount_amount: discountAmount,
+        terms_agreed_at: new Date().toISOString(),
         status: "pending",
       })
       .select("id")

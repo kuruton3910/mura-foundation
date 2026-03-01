@@ -154,6 +154,30 @@ function BookingCompleteContent() {
             <span className="font-bold text-[#2D4030] text-base">
               ¥{reservation.total_amount.toLocaleString()}（税込）
             </span>
+
+            {(reservation.rental_tent || reservation.rental_firepit) && (
+              <>
+                <span className="text-gray-500 col-span-2 mt-1 font-medium">
+                  レンタル品
+                </span>
+                {reservation.rental_tent && (
+                  <>
+                    <span className="text-gray-500 pl-3">テント</span>
+                    <span className="font-bold">
+                      {reservation.rental_tent_count}張
+                    </span>
+                  </>
+                )}
+                {reservation.rental_firepit && (
+                  <>
+                    <span className="text-gray-500 pl-3">焚き火台</span>
+                    <span className="font-bold">
+                      {reservation.rental_firepit_count}台
+                    </span>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>

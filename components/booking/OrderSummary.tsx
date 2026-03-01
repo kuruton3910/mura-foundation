@@ -1,13 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import type { ReservationFormData } from "@/lib/booking/schema";
 import {
   calcTotal,
+  calcSiteFee,
   calcBreakdown,
   calcNights,
   formatDate,
 } from "@/lib/booking/pricing";
+
+type CouponInfo = {
+  code: string;
+  discountPercent: number;
+  discountAmount: number;
+  message: string;
+};
 
 type OrderSummaryProps = {
   currentStep: number;
@@ -29,11 +38,59 @@ export default function OrderSummary({
   onPrev,
   isSubmitting,
 }: OrderSummaryProps) {
-  const { watch } = useFormContext<ReservationFormData>();
+  const { watch, setValue } = useFormContext<ReservationFormData>();
   const data = watch();
   const nights = calcNights(data.checkinDate, data.checkoutDate);
-  const total = calcTotal(data);
+  const baseTotal = calcTotal(data);
   const breakdown = calcBreakdown(data);
+
+  // Coupon state
+  const [couponInput, setCouponInput] = useState("");
+  const [couponInfo, setCouponInfo] = useState<CouponInfo | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  const discountAmount = couponInfo?.discountAmount ?? 0;
+  const finalTotal = Math.max(0, baseTotal - discountAmount);
+
+  async function handleApplyCoupon() {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    setCouponLoading(true);
+    setCouponError("");
+    setCouponInfo(null);
+
+    const params = new URLSearchParams({
+      code,
+      isMember: String(data.isMember),
+      vehicleCount: String(data.vehicleCount),
+      nights: String(nights),
+    });
+
+    const res = await fetch(`/api/coupons/validate?${params}`);
+    const json = await res.json();
+
+    if (json.valid) {
+      setCouponInfo({
+        code,
+        discountPercent: json.discountPercent,
+        discountAmount: json.discountAmount,
+        message: json.message,
+      });
+      setValue("couponCode", code);
+    } else {
+      setCouponError(json.message);
+      setValue("couponCode", "");
+    }
+    setCouponLoading(false);
+  }
+
+  function handleRemoveCoupon() {
+    setCouponInfo(null);
+    setCouponInput("");
+    setCouponError("");
+    setValue("couponCode", "");
+  }
 
   return (
     <div className="sticky top-8 space-y-4">
@@ -89,6 +146,14 @@ export default function OrderSummary({
                   <span>¥{item.amount.toLocaleString()}</span>
                 </div>
               ))}
+              {couponInfo && (
+                <div className="flex justify-between text-emerald-700 font-medium">
+                  <span>
+                    クーポン ({couponInfo.code} -{couponInfo.discountPercent}%)
+                  </span>
+                  <span>-¥{couponInfo.discountAmount.toLocaleString()}</span>
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-sm text-gray-400 text-center">
@@ -97,6 +162,52 @@ export default function OrderSummary({
           )}
 
           {breakdown.length > 0 && <hr />}
+
+          {/* Coupon input — shown from step 3 onward */}
+          {currentStep >= 3 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-stone-600">
+                クーポンコード（NAKAMAメンバー）
+              </p>
+              {couponInfo ? (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700 flex items-center justify-between">
+                  <span className="font-medium">{couponInfo.message}</span>
+                  <button
+                    type="button"
+                    onClick={handleRemoveCoupon}
+                    className="text-stone-400 hover:text-stone-600 ml-2 text-sm"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponInput}
+                      onChange={(e) =>
+                        setCouponInput(e.target.value.toUpperCase())
+                      }
+                      placeholder="NAKAMA10"
+                      className="flex-1 border border-stone-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#2D4030]/40"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading || !couponInput.trim()}
+                      className="px-3 py-2 bg-[#2D4030] text-white text-xs font-medium rounded-lg hover:bg-[#2D4030]/90 transition-colors disabled:opacity-50"
+                    >
+                      {couponLoading ? "確認中..." : "適用"}
+                    </button>
+                  </div>
+                  {couponError && (
+                    <p className="text-xs text-red-600">{couponError}</p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           {/* Rules */}
           <div className="bg-red-50 p-4 rounded-lg border border-red-100">
@@ -114,8 +225,13 @@ export default function OrderSummary({
           {/* Total */}
           <div className="text-center">
             <span className="text-sm text-gray-500">合計金額 (税込)</span>
+            {couponInfo && baseTotal > 0 && (
+              <div className="text-base text-stone-400 line-through">
+                ¥{baseTotal.toLocaleString()}
+              </div>
+            )}
             <div className="text-3xl font-bold text-[#2D4030] mt-1">
-              {total > 0 ? `¥${total.toLocaleString()}` : "---"}
+              {finalTotal > 0 ? `¥${finalTotal.toLocaleString()}` : "---"}
             </div>
           </div>
 
