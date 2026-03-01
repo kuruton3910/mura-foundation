@@ -29,13 +29,17 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
+      console.error("[coupons] insert error:", error);
       if (error.code === "23505") {
         return NextResponse.json(
           { error: "そのクーポンコードはすでに使用されています" },
           { status: 409 },
         );
       }
-      throw error;
+      return NextResponse.json(
+        { error: `DB エラー: ${error.message}` },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ coupon });

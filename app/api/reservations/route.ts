@@ -109,9 +109,15 @@ export async function POST(request: NextRequest) {
 
     if (availError) throw availError;
 
+    // デバッグ: 空き状況のログ
+    console.log("[availability] query:", checkinStr, "→", checkoutStr);
+    console.log("[availability] rows:", JSON.stringify(availability));
+
     const unavailable = availability?.find(
       (d) => d.is_closed || (d.available_sites ?? Infinity) < body.vehicleCount,
     );
+
+    console.log("[availability] blocking:", JSON.stringify(unavailable ?? null));
 
     if (unavailable) {
       return NextResponse.json(
