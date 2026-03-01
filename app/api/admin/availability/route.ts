@@ -13,12 +13,12 @@ function generateDateRange(from: string, to: string): string[] {
 }
 
 // POST /api/admin/availability
-// Single:  { date, is_closed, available_sites }
+// Single:  { date, is_closed, available_sites, icon? }
 // Bulk:    { from, to, is_closed, available_sites }
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { is_closed, available_sites } = body;
+    const { is_closed, available_sites, icon } = body;
     const supabase = createServerClient();
 
     // --- 一括設定 ---
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     const { data: override, error } = await supabase
       .from("availability_overrides")
-      .upsert({ date, is_closed, max_sites: available_sites }, { onConflict: "date" })
+      .upsert({ date, is_closed, max_sites: available_sites, icon: icon ?? null }, { onConflict: "date" })
       .select()
       .single();
 

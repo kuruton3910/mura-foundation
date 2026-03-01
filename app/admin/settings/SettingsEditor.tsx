@@ -76,6 +76,36 @@ function DaysInput({
   );
 }
 
+function PriceInput({
+  label,
+  fieldKey,
+  values,
+  onChange,
+}: {
+  label: string;
+  fieldKey: keyof SiteSettings;
+  values: SiteSettings;
+  onChange: (key: keyof SiteSettings, val: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-4 py-3 border-b border-stone-100 last:border-0">
+      <span className="w-44 text-sm text-stone-600 shrink-0">{label}</span>
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-stone-500">¥</span>
+        <input
+          type="number"
+          min={0}
+          step={100}
+          value={values[fieldKey] as number}
+          onChange={(e) => onChange(fieldKey, Number(e.target.value))}
+          className="w-24 border border-stone-300 rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-[#2D4030]"
+        />
+        <span className="text-sm text-stone-500">/ 区画・泊</span>
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsEditor({
   settings: initialSettings,
 }: {
@@ -203,6 +233,30 @@ export default function SettingsEditor({
           <DaysInput
             label="NAKAMA会員"
             fieldKey="booking_window_member_days"
+            values={values}
+            onChange={handleChange}
+          />
+        </div>
+      </section>
+
+      {/* 料金設定 */}
+      <section className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+        <div className="bg-stone-50 px-5 py-3 border-b border-stone-200">
+          <h2 className="font-bold text-stone-700">区画料金設定</h2>
+          <p className="text-xs text-stone-500 mt-0.5">
+            平日（月〜木始まりの夜）と週末（金・土始まりの夜）の1区画あたりの料金
+          </p>
+        </div>
+        <div className="px-5">
+          <PriceInput
+            label="平日料金（月〜木）"
+            fieldKey="site_fee_weekday"
+            values={values}
+            onChange={handleChange}
+          />
+          <PriceInput
+            label="週末料金（金・土）"
+            fieldKey="site_fee_weekend"
             values={values}
             onChange={handleChange}
           />

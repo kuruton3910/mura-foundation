@@ -99,10 +99,10 @@ export default function StepPayment() {
           <p className="font-bold text-stone-600 mb-1">
             Stripe 決済 (実装予定)
           </p>
-          <p className="text-sm text-stone-400 max-w-xs">
+          {/* <p className="text-sm text-stone-400 max-w-xs">
             Phase 2でStripe
             Checkoutを統合します。クレジットカード・デビットカードに対応予定です。
-          </p>
+          </p> */}
         </div>
       </section>
     </div>

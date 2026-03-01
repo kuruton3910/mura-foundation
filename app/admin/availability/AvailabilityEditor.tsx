@@ -8,6 +8,7 @@ type Override = {
   date: string;
   max_sites: number | null;
   is_closed: boolean;
+  icon: string | null;
 };
 
 type Reservation = {
@@ -17,6 +18,11 @@ type Reservation = {
 };
 
 const DEFAULT_SITES = 5;
+const ICONS = [
+  { value: "🌕", label: "満月" },
+  { value: "🌑", label: "新月" },
+  { value: "⭐", label: "星" },
+];
 
 function buildDateList(from: string, to: string): string[] {
   const dates: string[] = [];
@@ -141,10 +147,33 @@ export default function AvailabilityEditor({
 
   async function updateSites(date: string, sites: number) {
     setSaving(date);
+    const existing = overrideMap.get(date);
     const res = await fetch(`/api/admin/availability`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, is_closed: false, available_sites: sites }),
+      body: JSON.stringify({ date, is_closed: false, available_sites: sites, icon: existing?.icon ?? null }),
+    });
+    const data = await res.json();
+    if (data.override) {
+      const next = new Map(overrideMap);
+      next.set(date, data.override);
+      setOverrideMap(next);
+    }
+    setSaving(null);
+  }
+
+  async function updateIcon(date: string, icon: string | null) {
+    setSaving(date);
+    const existing = overrideMap.get(date);
+    const res = await fetch(`/api/admin/availability`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        date,
+        is_closed: existing?.is_closed ?? false,
+        available_sites: existing?.max_sites ?? null,
+        icon,
+      }),
     });
     const data = await res.json();
     if (data.override) {
@@ -239,6 +268,7 @@ export default function AvailabilityEditor({
               const isClosed = ov?.is_closed ?? false;
               const available = isClosed ? 0 : maxSites - booked;
               const isSaving = saving === date;
+              const currentIcon = ov?.icon ?? null;
 
               const dayOfWeek = new Date(date).toLocaleDateString("ja-JP", {
                 weekday: "short",
@@ -247,7 +277,7 @@ export default function AvailabilityEditor({
               return (
                 <div
                   key={date}
-                  className={`flex items-center gap-4 px-5 py-3 text-sm ${
+                  className={`flex flex-wrap items-center gap-3 px-5 py-3 text-sm ${
                     isClosed ? "bg-red-50" : ""
                   }`}
                 >
@@ -273,8 +303,31 @@ export default function AvailabilityEditor({
                     予約済: {booked}区画
                   </span>
 
+                  {/* アイコン選択 */}
+                  <div className="flex items-center gap-1 ml-auto">
+                    <span className="text-xs text-stone-400 mr-1">アイコン:</span>
+                    {ICONS.map((ic) => (
+                      <button
+                        key={ic.value}
+                        type="button"
+                        onClick={() =>
+                          updateIcon(date, currentIcon === ic.value ? null : ic.value)
+                        }
+                        disabled={isSaving}
+                        title={ic.label}
+                        className={`w-7 h-7 text-base flex items-center justify-center rounded transition-colors disabled:opacity-40 ${
+                          currentIcon === ic.value
+                            ? "bg-stone-200 ring-1 ring-stone-400"
+                            : "hover:bg-stone-100"
+                        }`}
+                      >
+                        {ic.value}
+                      </button>
+                    ))}
+                  </div>
+
                   {!isClosed && (
-                    <div className="flex items-center gap-2 ml-auto">
+                    <div className="flex items-center gap-2">
                       <label className="text-xs text-stone-500">
                         最大区画数:
                       </label>
@@ -298,7 +351,7 @@ export default function AvailabilityEditor({
                   <button
                     onClick={() => toggleClosed(date)}
                     disabled={isSaving}
-                    className={`ml-auto px-3 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50 ${
+                    className={`px-3 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50 ${
                       isClosed
                         ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
                         : "bg-red-100 text-red-700 hover:bg-red-200"

@@ -1,10 +1,19 @@
 import type { ReservationFormData } from "./schema";
 
 export const PRICES = {
-  sitePerNight: 2500, // 1区画/泊
   adultPerNight: 1500, // 大人/泊
   childPerNight: 500, // 子ども/泊
   petPerNight: 500, // ペット/泊
+};
+
+export type SiteFees = {
+  weekday: number;
+  weekend: number;
+};
+
+export const DEFAULT_SITE_FEES: SiteFees = {
+  weekday: 2500,
+  weekend: 3000,
 };
 
 export type RentalOption = {
@@ -16,6 +25,12 @@ export type RentalOption = {
   max_count: number;
 };
 
+/** 金曜・土曜始まりの夜はウィークエンド料金 */
+export function isWeekendNight(d: Date): boolean {
+  const dow = d.getDay(); // 0=Sun, 5=Fri, 6=Sat
+  return dow === 5 || dow === 6;
+}
+
 export function calcNights(
   checkin: Date | null,
   checkout: Date | null,
@@ -26,9 +41,19 @@ export function calcNights(
 }
 
 /** クーポン割引の対象となる区画料のみを計算 */
-export function calcSiteFee(data: ReservationFormData): number {
-  const nights = calcNights(data.checkinDate, data.checkoutDate);
-  return data.vehicleCount * PRICES.sitePerNight * nights;
+export function calcSiteFee(
+  data: ReservationFormData,
+  siteFees: SiteFees = DEFAULT_SITE_FEES,
+): number {
+  if (!data.checkinDate || !data.checkoutDate) return 0;
+  let total = 0;
+  const cur = new Date(data.checkinDate);
+  while (cur < data.checkoutDate) {
+    const fee = isWeekendNight(cur) ? siteFees.weekend : siteFees.weekday;
+    total += data.vehicleCount * fee;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return total;
 }
 
 export function calcOptionsFee(
@@ -44,11 +69,12 @@ export function calcOptionsFee(
 export function calcTotal(
   data: ReservationFormData,
   options: RentalOption[] = [],
+  siteFees: SiteFees = DEFAULT_SITE_FEES,
 ): number {
   const nights = calcNights(data.checkinDate, data.checkoutDate);
   if (nights === 0) return 0;
 
-  const siteFee = data.vehicleCount * PRICES.sitePerNight * nights;
+  const siteFee = calcSiteFee(data, siteFees);
   const adultFee = data.adults * PRICES.adultPerNight * nights;
   const childFee = data.children * PRICES.childPerNight * nights;
   const petFee = data.pets * PRICES.petPerNight * nights;
@@ -60,15 +86,17 @@ export function calcTotal(
 export function calcBreakdown(
   data: ReservationFormData,
   options: RentalOption[] = [],
+  siteFees: SiteFees = DEFAULT_SITE_FEES,
 ): { label: string; amount: number }[] {
   const nights = calcNights(data.checkinDate, data.checkoutDate);
   if (nights === 0) return [];
 
   const items: { label: string; amount: number }[] = [];
 
+  const siteFee = calcSiteFee(data, siteFees);
   items.push({
     label: `区画料 ${data.vehicleCount}区画 × ${nights}泊`,
-    amount: data.vehicleCount * PRICES.sitePerNight * nights,
+    amount: siteFee,
   });
   items.push({
     label: `大人 ${data.adults}名 × ${nights}泊`,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { DEFAULT_SETTINGS } from "@/lib/booking/siteSettings";
 
 // GET /api/coupons/validate?code=XXX&isMember=true&vehicleCount=2&nights=2
 export async function GET(request: NextRequest) {
@@ -18,6 +19,15 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServerClient();
   const today = new Date().toISOString().split("T")[0];
+
+  // 設定から区画料を取得（表示用の概算）
+  const { data: settingsData } = await supabase
+    .from("site_settings")
+    .select("site_fee_weekday")
+    .eq("id", 1)
+    .single();
+  const siteFeePerNight =
+    settingsData?.site_fee_weekday ?? DEFAULT_SETTINGS.site_fee_weekday;
 
   const { data: coupon } = await supabase
     .from("coupons")
@@ -63,8 +73,8 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // 割引額計算（区画料のみに適用）
-  const siteFee = vehicleCount * 2500 * nights;
+  // 割引額計算（区画料のみに適用、平日料金ベースの概算）
+  const siteFee = vehicleCount * siteFeePerNight * nights;
   const discountAmount = Math.floor((siteFee * coupon.discount_percent) / 100);
 
   return NextResponse.json({

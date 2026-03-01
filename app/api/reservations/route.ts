@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
-import { calcTotal, calcSiteFee, type RentalOption } from "@/lib/booking/pricing";
+import { calcTotal, calcSiteFee, type RentalOption, type SiteFees } from "@/lib/booking/pricing";
 import type { ReservationFormData } from "@/lib/booking/schema";
 import { DEFAULT_SETTINGS } from "@/lib/booking/siteSettings";
 
@@ -44,6 +44,12 @@ export async function POST(request: NextRequest) {
       .eq("id", 1)
       .single();
     const settings = { ...DEFAULT_SETTINGS, ...(settingsData ?? {}) };
+
+    // ── 区画料（平日/週末） ──────────────────────────────────────────
+    const siteFees: SiteFees = {
+      weekday: settings.site_fee_weekday ?? DEFAULT_SETTINGS.site_fee_weekday,
+      weekend: settings.site_fee_weekend ?? DEFAULT_SETTINGS.site_fee_weekend,
+    };
 
     // ── 予約受付期間チェック ──────────────────────────────────────────
     const maxDays = body.isMember
@@ -123,15 +129,9 @@ export async function POST(request: NextRequest) {
 
     if (availError) throw availError;
 
-    // デバッグ: 空き状況のログ
-    console.log("[availability] query:", checkinStr, "→", checkoutStr);
-    console.log("[availability] rows:", JSON.stringify(availability));
-
     const unavailable = availability?.find(
       (d) => d.is_closed || (d.available_sites ?? Infinity) < body.vehicleCount,
     );
-
-    console.log("[availability] blocking:", JSON.stringify(unavailable ?? null));
 
     if (unavailable) {
       return NextResponse.json(
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
       checkinDate: checkin,
       checkoutDate: checkout,
     };
-    const baseTotal = calcTotal(formDataWithDates, options);
+    const baseTotal = calcTotal(formDataWithDates, options, siteFees);
 
     // ── クーポン検証 ──────────────────────────────────────────────────
     let discountAmount = 0;
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
         const memberOk = !coupon.is_member_only || body.isMember;
 
         if (withinDates && withinUses && memberOk) {
-          const siteFee = calcSiteFee(formDataWithDates);
+          const siteFee = calcSiteFee(formDataWithDates, siteFees);
           discountAmount = Math.floor(
             (siteFee * coupon.discount_percent) / 100,
           );

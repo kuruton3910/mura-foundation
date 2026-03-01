@@ -44,6 +44,7 @@ export type AvailabilityOverride = {
   is_closed: boolean;
   max_sites: number | null;
   note: string | null;
+  icon: string | null;
   created_at: string;
 };
 
@@ -54,6 +55,7 @@ export type DailyAvailability = {
   booked_sites: number;
   available_sites: number;
   note: string | null;
+  icon: string | null;
 };
 
 export type Coupon = {

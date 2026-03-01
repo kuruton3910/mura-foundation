@@ -276,7 +276,7 @@ export default function OrderSummary({
         </div>
       </div>
 
-      <div className="text-center p-4 bg-stone-100 rounded-lg">
+      {/* <div className="text-center p-4 bg-stone-100 rounded-lg">
         <p className="text-xs text-stone-500">お困りの際はこちら</p>
         <a
           href="#"
@@ -284,7 +284,7 @@ export default function OrderSummary({
         >
           よくある質問とヘルプ
         </a>
-      </div>
+      </div> */}
     </div>
   );
 }

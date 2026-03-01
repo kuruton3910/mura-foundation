@@ -8,8 +8,10 @@ import {
   DEFAULT_SETTINGS,
   type SiteSettings,
 } from "@/lib/booking/siteSettings";
+import { isWeekendNight } from "@/lib/booking/pricing";
 
 const DOW_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+const LOW_SPOTS_THRESHOLD = 3;
 
 function isSameDay(a: Date, b: Date) {
   return (
@@ -133,7 +135,20 @@ export default function ReservationCalendar() {
     return avail.available_sites;
   }
 
+  function getDateIcon(date: Date): string | null {
+    return availability.get(toDateStr(date))?.icon ?? null;
+  }
+
+  const canGoPrev = !(
+    viewYear === today.getFullYear() && viewMonth <= today.getMonth()
+  );
+
+  // 翌月の1日目が予約可能期間内かどうか
+  const canGoNext =
+    new Date(viewYear, viewMonth + 1, 1) <= maxBookableDate;
+
   function prevMonth() {
+    if (!canGoPrev) return;
     if (viewMonth === 0) {
       setViewYear((y) => y - 1);
       setViewMonth(11);
@@ -141,6 +156,7 @@ export default function ReservationCalendar() {
   }
 
   function nextMonth() {
+    if (!canGoNext) return;
     if (viewMonth === 11) {
       setViewYear((y) => y + 1);
       setViewMonth(0);
@@ -235,22 +251,27 @@ export default function ReservationCalendar() {
         badge: "OUT",
         badgeCls: "text-[10px] mt-1 text-emerald-200",
       };
-    if (isInRange)
+    if (isInRange) {
+      const badgeColor = (spots ?? 0) <= LOW_SPOTS_THRESHOLD ? "text-red-500" : "text-[#2D4030]";
       return {
         cell: "bg-emerald-100 p-2 h-20 flex flex-col items-center cursor-pointer",
         text: "text-[#2D4030]",
         badge: `残${spots}`,
-        badgeCls: "text-[10px] mt-1 text-[#2D4030]",
+        badgeCls: `text-[10px] mt-1 ${badgeColor}`,
       };
+    }
 
     switch (status) {
-      case "available":
+      case "available": {
+        const isWeekend = isWeekendNight(d);
+        const badgeColor = (spots ?? 0) <= LOW_SPOTS_THRESHOLD ? "text-red-500 font-bold" : "text-[#2D4030]";
         return {
-          cell: "bg-white p-2 h-20 flex flex-col items-center hover:bg-green-50 cursor-pointer border-2 border-transparent hover:border-[#2D4030] transition-all",
+          cell: `${isWeekend ? "bg-orange-50 hover:bg-orange-100" : "bg-white hover:bg-green-50"} p-2 h-20 flex flex-col items-center cursor-pointer border-2 border-transparent hover:border-[#2D4030] transition-all`,
           text: "",
           badge: `残${spots}`,
-          badgeCls: "text-[10px] mt-1 text-[#2D4030]",
+          badgeCls: `text-[10px] mt-1 ${badgeColor}`,
         };
+      }
       case "full":
         return {
           cell: "bg-white p-2 h-20 flex flex-col items-center opacity-40 cursor-not-allowed",
@@ -317,9 +338,6 @@ export default function ReservationCalendar() {
     "11月",
     "12月",
   ];
-  const canGoPrev = !(
-    viewYear === today.getFullYear() && viewMonth <= today.getMonth()
-  );
 
   // シーズン後・NAKAMA限定月を表示中かどうか
   const isNakamaBanner =
@@ -374,7 +392,9 @@ export default function ReservationCalendar() {
         <button
           type="button"
           onClick={nextMonth}
-          className="w-12 h-12 text-2xl flex items-center justify-center rounded-full font-bold hover:bg-stone-200 transition-colors"
+          disabled={!canGoNext}
+          className={`w-12 h-12 text-2xl flex items-center justify-center rounded-full font-bold transition-colors
+          ${canGoNext ? "hover:bg-stone-200" : "opacity-20 cursor-not-allowed"}`}
         >
           ›
         </button>
@@ -397,6 +417,7 @@ export default function ReservationCalendar() {
         {allCells.map((date, idx) => {
           const isCurrentMonth = date.getMonth() === viewMonth;
           const style = getCellStyle(date, isCurrentMonth);
+          const icon = isCurrentMonth ? getDateIcon(startOfDay(date)) : null;
           return (
             <div
               key={idx}
@@ -413,6 +434,9 @@ export default function ReservationCalendar() {
               {style.badge && (
                 <span className={style.badgeCls}>{style.badge}</span>
               )}
+              {icon && (
+                <span className="text-[11px] mt-0.5 leading-none">{icon}</span>
+              )}
             </div>
           );
         })}
@@ -428,7 +452,11 @@ export default function ReservationCalendar() {
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 bg-white border border-gray-300 rounded inline-block" />{" "}
-          空きあり
+          平日
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 bg-orange-50 border border-orange-200 rounded inline-block" />{" "}
+          週末
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 bg-amber-50 border border-amber-200 rounded inline-block" />{" "}
