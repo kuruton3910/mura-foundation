@@ -62,6 +62,11 @@ export async function POST(request: NextRequest) {
     }
 
     // ── シーズン制限 ─────────────────────────────────────────────────
+    const seasonOpen = new Date(
+      checkin.getFullYear(),
+      settings.season_open_month - 1,
+      settings.season_open_day,
+    );
     const seasonClose = new Date(
       checkin.getFullYear(),
       settings.season_close_month - 1,
@@ -72,6 +77,15 @@ export async function POST(request: NextRequest) {
       settings.member_close_month - 1,
       settings.member_close_day,
     );
+
+    if (checkin < seasonOpen) {
+      return NextResponse.json(
+        {
+          error: `${settings.season_open_month}月${settings.season_open_day}日以前のご予約は受け付けておりません。`,
+        },
+        { status: 400 },
+      );
+    }
 
     if (checkin > seasonClose && !body.isMember) {
       return NextResponse.json(
@@ -202,7 +216,7 @@ export async function POST(request: NextRequest) {
         adults: body.adults,
         children: body.children,
         pets: body.pets,
-        selected_options: selectedOptions.length > 0 ? selectedOptions : null,
+        selected_options: selectedOptions,
         total_amount: totalAmount,
         coupon_code: appliedCouponCode,
         discount_amount: discountAmount,
