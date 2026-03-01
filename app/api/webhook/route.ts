@@ -80,10 +80,7 @@ export async function POST(request: NextRequest) {
             totalAmount: reservation.total_amount,
             discountAmount: reservation.discount_amount ?? 0,
             couponCode: reservation.coupon_code ?? undefined,
-            rentalTent: reservation.rental_tent,
-            rentalTentCount: reservation.rental_tent_count,
-            rentalFirepit: reservation.rental_firepit,
-            rentalFirepitCount: reservation.rental_firepit_count,
+            selectedOptions: reservation.selected_options ?? undefined,
           });
           console.log(`Confirmation email sent to ${reservation.guest_email}`);
         } catch (emailErr) {

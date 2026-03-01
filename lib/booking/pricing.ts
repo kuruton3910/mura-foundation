@@ -5,8 +5,15 @@ export const PRICES = {
   adultPerNight: 1500, // 大人/泊
   childPerNight: 500, // 子ども/泊
   petPerNight: 500, // ペット/泊
-  rentalTent: 3000, // レンタルテント/張
-  rentalFirepit: 1500, // 焚き火台/台
+};
+
+export type RentalOption = {
+  id: string;
+  name: string;
+  description?: string | null;
+  price_per_unit: number;
+  unit_label: string;
+  max_count: number;
 };
 
 export function calcNights(
@@ -24,7 +31,20 @@ export function calcSiteFee(data: ReservationFormData): number {
   return data.vehicleCount * PRICES.sitePerNight * nights;
 }
 
-export function calcTotal(data: ReservationFormData): number {
+export function calcOptionsFee(
+  optionCounts: Record<string, number>,
+  options: RentalOption[],
+): number {
+  return options.reduce((sum, opt) => {
+    const count = optionCounts[opt.id] ?? 0;
+    return sum + count * opt.price_per_unit;
+  }, 0);
+}
+
+export function calcTotal(
+  data: ReservationFormData,
+  options: RentalOption[] = [],
+): number {
   const nights = calcNights(data.checkinDate, data.checkoutDate);
   if (nights === 0) return 0;
 
@@ -32,17 +52,15 @@ export function calcTotal(data: ReservationFormData): number {
   const adultFee = data.adults * PRICES.adultPerNight * nights;
   const childFee = data.children * PRICES.childPerNight * nights;
   const petFee = data.pets * PRICES.petPerNight * nights;
-  const tentFee = data.rentalTent
-    ? data.rentalTentCount * PRICES.rentalTent
-    : 0;
-  const firepitFee = data.rentalFirepit
-    ? data.rentalFirepitCount * PRICES.rentalFirepit
-    : 0;
+  const optFee = calcOptionsFee(data.optionCounts ?? {}, options);
 
-  return siteFee + adultFee + childFee + petFee + tentFee + firepitFee;
+  return siteFee + adultFee + childFee + petFee + optFee;
 }
 
-export function calcBreakdown(data: ReservationFormData) {
+export function calcBreakdown(
+  data: ReservationFormData,
+  options: RentalOption[] = [],
+): { label: string; amount: number }[] {
   const nights = calcNights(data.checkinDate, data.checkoutDate);
   if (nights === 0) return [];
 
@@ -68,18 +86,17 @@ export function calcBreakdown(data: ReservationFormData) {
       amount: data.pets * PRICES.petPerNight * nights,
     });
   }
-  if (data.rentalTent && data.rentalTentCount > 0) {
-    items.push({
-      label: `レンタルテント ${data.rentalTentCount}張`,
-      amount: data.rentalTentCount * PRICES.rentalTent,
-    });
+
+  for (const opt of options) {
+    const count = (data.optionCounts ?? {})[opt.id] ?? 0;
+    if (count > 0) {
+      items.push({
+        label: `${opt.name} ${count}${opt.unit_label}`,
+        amount: count * opt.price_per_unit,
+      });
+    }
   }
-  if (data.rentalFirepit && data.rentalFirepitCount > 0) {
-    items.push({
-      label: `焚き火台 ${data.rentalFirepitCount}台`,
-      amount: data.rentalFirepitCount * PRICES.rentalFirepit,
-    });
-  }
+
   return items;
 }
 

@@ -6,13 +6,7 @@ import type { ReservationFormData } from "@/lib/booking/schema";
 type CounterRowProps = {
   label: string;
   sublabel?: string;
-  field:
-    | "adults"
-    | "children"
-    | "pets"
-    | "vehicleCount"
-    | "rentalTentCount"
-    | "rentalFirepitCount";
+  field: "adults" | "children" | "pets" | "vehicleCount";
   min: number;
   max: number;
 };
@@ -88,28 +82,5 @@ export function GuestCountSelector() {
         <p className="text-xs text-red-500">{errors.adults.message}</p>
       )}
     </div>
-  );
-}
-
-export function RentalCountSelector({ type }: { type: "tent" | "firepit" }) {
-  if (type === "tent") {
-    return (
-      <CounterRow
-        label="レンタルテント"
-        sublabel="枚数"
-        field="rentalTentCount"
-        min={1}
-        max={5}
-      />
-    );
-  }
-  return (
-    <CounterRow
-      label="焚き火台"
-      sublabel="台数"
-      field="rentalFirepitCount"
-      min={1}
-      max={5}
-    />
   );
 }

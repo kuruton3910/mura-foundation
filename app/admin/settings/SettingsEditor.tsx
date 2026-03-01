@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { SiteSettings } from "@/lib/booking/siteSettings";
+import type { SiteSettings, TermGroup } from "@/lib/booking/siteSettings";
 
 const MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -93,6 +93,47 @@ export default function SettingsEditor({
     setMessage(null);
   }
 
+  function handleTermTitle(groupIndex: number, title: string) {
+    setValues((prev) => {
+      const groups = prev.terms_groups.map((g, i) =>
+        i === groupIndex ? { ...g, title } : g,
+      );
+      return { ...prev, terms_groups: groups };
+    });
+    setMessage(null);
+  }
+
+  function handleTermItems(groupIndex: number, text: string) {
+    const terms = text
+      .split("\n")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    setValues((prev) => {
+      const groups = prev.terms_groups.map((g, i) =>
+        i === groupIndex ? { ...g, terms } : g,
+      );
+      return { ...prev, terms_groups: groups };
+    });
+    setMessage(null);
+  }
+
+  function addGroup() {
+    setValues((prev) => ({
+      ...prev,
+      terms_groups: [
+        ...prev.terms_groups,
+        { title: "新しいグループ", terms: ["規約項目を入力してください"] },
+      ],
+    }));
+  }
+
+  function removeGroup(groupIndex: number) {
+    setValues((prev) => ({
+      ...prev,
+      terms_groups: prev.terms_groups.filter((_, i) => i !== groupIndex),
+    }));
+  }
+
   async function handleSave() {
     setSaving(true);
     setMessage(null);
@@ -165,6 +206,58 @@ export default function SettingsEditor({
             values={values}
             onChange={handleChange}
           />
+        </div>
+      </section>
+
+      {/* 利用規約 */}
+      <section className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+        <div className="bg-stone-50 px-5 py-3 border-b border-stone-200 flex items-center justify-between">
+          <div>
+            <h2 className="font-bold text-stone-700">利用規約</h2>
+            <p className="text-xs text-stone-500 mt-0.5">
+              グループ単位で編集できます。各項目は改行で区切ってください。
+            </p>
+          </div>
+        </div>
+        <div className="p-5 space-y-4">
+          {values.terms_groups.map((group, i) => (
+            <div key={i} className="border border-stone-200 rounded-lg overflow-hidden">
+              <div className="bg-stone-50 px-4 py-2 flex items-center gap-3 border-b border-stone-200">
+                <span className="text-xs font-bold text-stone-500 w-16 shrink-0">グループ {i + 1}</span>
+                <input
+                  type="text"
+                  value={group.title}
+                  onChange={(e) => handleTermTitle(i, e.target.value)}
+                  className="flex-1 border border-stone-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#2D4030]"
+                  placeholder="グループタイトル"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeGroup(i)}
+                  className="text-xs text-red-400 hover:text-red-600 shrink-0"
+                >
+                  削除
+                </button>
+              </div>
+              <div className="p-3">
+                <textarea
+                  rows={group.terms.length + 1}
+                  value={group.terms.join("\n")}
+                  onChange={(e) => handleTermItems(i, e.target.value)}
+                  className="w-full border border-stone-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#2D4030] font-mono leading-relaxed"
+                  placeholder="1行ずつ規約項目を入力"
+                />
+                <p className="text-xs text-stone-400 mt-1">{group.terms.length}項目</p>
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addGroup}
+            className="text-sm text-[#2D4030] border border-[#2D4030] rounded-lg px-4 py-2 hover:bg-[#2D4030]/5 transition-colors"
+          >
+            + グループを追加
+          </button>
         </div>
       </section>
 

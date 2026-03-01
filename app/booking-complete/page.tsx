@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Reservation } from "@/lib/supabase/types";
@@ -155,27 +155,19 @@ function BookingCompleteContent() {
               ¥{reservation.total_amount.toLocaleString()}（税込）
             </span>
 
-            {(reservation.rental_tent || reservation.rental_firepit) && (
+            {(reservation.selected_options && reservation.selected_options.length > 0) && (
               <>
                 <span className="text-gray-500 col-span-2 mt-1 font-medium">
-                  レンタル品
+                  追加オプション
                 </span>
-                {reservation.rental_tent && (
-                  <>
-                    <span className="text-gray-500 pl-3">テント</span>
+                {reservation.selected_options.map((opt) => (
+                  <React.Fragment key={opt.id}>
+                    <span className="text-gray-500 pl-3">{opt.name}</span>
                     <span className="font-bold">
-                      {reservation.rental_tent_count}張
+                      {opt.count}{opt.unit_label}（¥{opt.subtotal.toLocaleString()}）
                     </span>
-                  </>
-                )}
-                {reservation.rental_firepit && (
-                  <>
-                    <span className="text-gray-500 pl-3">焚き火台</span>
-                    <span className="font-bold">
-                      {reservation.rental_firepit_count}台
-                    </span>
-                  </>
-                )}
+                  </React.Fragment>
+                ))}
               </>
             )}
           </div>

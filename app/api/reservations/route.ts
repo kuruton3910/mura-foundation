@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
-import { calcTotal, calcSiteFee } from "@/lib/booking/pricing";
+import { calcTotal, calcSiteFee, type RentalOption } from "@/lib/booking/pricing";
 import type { ReservationFormData } from "@/lib/booking/schema";
 import { DEFAULT_SETTINGS } from "@/lib/booking/siteSettings";
 
@@ -29,6 +29,13 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createServerClient();
+
+    // ── レンタルオプション一覧を取得 ──────────────────────────────────
+    const { data: optionsData } = await supabase
+      .from("rental_options")
+      .select("id, name, price_per_unit, unit_label, max_count, description")
+      .eq("is_active", true);
+    const options: RentalOption[] = optionsData ?? [];
 
     // ── サイト設定をDBから取得 ────────────────────────────────────────
     const { data: settingsData } = await supabase
@@ -119,7 +126,7 @@ export async function POST(request: NextRequest) {
       checkinDate: checkin,
       checkoutDate: checkout,
     };
-    const baseTotal = calcTotal(formDataWithDates);
+    const baseTotal = calcTotal(formDataWithDates, options);
 
     // ── クーポン検証 ──────────────────────────────────────────────────
     let discountAmount = 0;
@@ -161,6 +168,19 @@ export async function POST(request: NextRequest) {
 
     const totalAmount = Math.max(0, baseTotal - discountAmount);
 
+    // ── 選択されたオプションをJSONBとして整形 ─────────────────────────
+    const optionCounts = body.optionCounts ?? {};
+    const selectedOptions = options
+      .filter((opt) => (optionCounts[opt.id] ?? 0) > 0)
+      .map((opt) => ({
+        id: opt.id,
+        name: opt.name,
+        count: optionCounts[opt.id],
+        unit_label: opt.unit_label,
+        price_per_unit: opt.price_per_unit,
+        subtotal: optionCounts[opt.id] * opt.price_per_unit,
+      }));
+
     // 予約を pending で作成
     const { data: reservation, error: insertError } = await supabase
       .from("reservations")
@@ -176,10 +196,7 @@ export async function POST(request: NextRequest) {
         adults: body.adults,
         children: body.children,
         pets: body.pets,
-        rental_tent: body.rentalTent,
-        rental_tent_count: body.rentalTent ? body.rentalTentCount : 0,
-        rental_firepit: body.rentalFirepit,
-        rental_firepit_count: body.rentalFirepit ? body.rentalFirepitCount : 0,
+        selected_options: selectedOptions.length > 0 ? selectedOptions : null,
         total_amount: totalAmount,
         coupon_code: appliedCouponCode,
         discount_amount: discountAmount,

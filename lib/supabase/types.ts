@@ -1,11 +1,18 @@
-// Supabase テーブルの型定義
-
 export type ReservationStatus =
   | "pending"
   | "confirmed"
   | "cancelled"
   | "completed"
   | "refunded";
+
+export type SelectedOption = {
+  id: string;
+  name: string;
+  count: number;
+  unit_label: string;
+  price_per_unit: number;
+  subtotal: number;
+};
 
 export type Reservation = {
   id: string;
@@ -20,11 +27,10 @@ export type Reservation = {
   adults: number;
   children: number;
   pets: number;
-  rental_tent: boolean;
-  rental_tent_count: number;
-  rental_firepit: boolean;
-  rental_firepit_count: number;
+  selected_options: SelectedOption[] | null;
   total_amount: number;
+  coupon_code: string | null;
+  discount_amount: number;
   status: ReservationStatus;
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;

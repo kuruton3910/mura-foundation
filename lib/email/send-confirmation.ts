@@ -1,5 +1,14 @@
 import { Resend } from "resend";
 
+type SelectedOption = {
+  id: string;
+  name: string;
+  count: number;
+  unit_label: string;
+  price_per_unit: number;
+  subtotal: number;
+};
+
 type ConfirmationEmailParams = {
   guestEmail: string;
   guestName: string;
@@ -13,10 +22,7 @@ type ConfirmationEmailParams = {
   totalAmount: number;
   discountAmount?: number;
   couponCode?: string;
-  rentalTent?: boolean;
-  rentalTentCount?: number;
-  rentalFirepit?: boolean;
-  rentalFirepitCount?: number;
+  selectedOptions?: SelectedOption[];
 };
 
 export async function sendConfirmationEmail(
@@ -81,8 +87,11 @@ export async function sendConfirmationEmail(
         <div class="row"><span class="label">チェックアウト</span><span class="value">${params.checkoutDate}（〜11:00）</span></div>
         <div class="row"><span class="label">区画数</span><span class="value">${params.vehicleCount}区画</span></div>
         <div class="row"><span class="label">人数</span><span class="value">大人${params.adults}名${params.children > 0 ? ` / 子供${params.children}名` : ""}${params.pets > 0 ? ` / ペット${params.pets}匹` : ""}</span></div>
-        ${params.rentalTent && params.rentalTentCount ? `<div class="row"><span class="label">レンタルテント</span><span class="value">${params.rentalTentCount}張</span></div>` : ""}
-        ${params.rentalFirepit && params.rentalFirepitCount ? `<div class="row"><span class="label">レンタル焚き火台</span><span class="value">${params.rentalFirepitCount}台</span></div>` : ""}
+        ${params.selectedOptions && params.selectedOptions.length > 0
+          ? params.selectedOptions.map(opt =>
+              `<div class="row"><span class="label">${opt.name}</span><span class="value">${opt.count}${opt.unit_label}（¥${opt.subtotal.toLocaleString()}）</span></div>`
+            ).join("")
+          : ""}
       </div>
 
       <div class="section">

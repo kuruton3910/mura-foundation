@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import type { ReservationFormData } from "@/lib/booking/schema";
 import {
@@ -9,6 +9,7 @@ import {
   calcBreakdown,
   calcNights,
   formatDate,
+  type RentalOption,
 } from "@/lib/booking/pricing";
 
 type CouponInfo = {
@@ -41,8 +42,17 @@ export default function OrderSummary({
   const { watch, setValue } = useFormContext<ReservationFormData>();
   const data = watch();
   const nights = calcNights(data.checkinDate, data.checkoutDate);
-  const baseTotal = calcTotal(data);
-  const breakdown = calcBreakdown(data);
+  const [options, setOptions] = useState<RentalOption[]>([]);
+
+  useEffect(() => {
+    fetch("/api/options")
+      .then((r) => r.json())
+      .then((d) => setOptions(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, []);
+
+  const baseTotal = calcTotal(data, options);
+  const breakdown = calcBreakdown(data, options);
 
   // Coupon state
   const [couponInput, setCouponInput] = useState("");
@@ -266,7 +276,7 @@ export default function OrderSummary({
         </div>
       </div>
 
-      {/* <div className="text-center p-4 bg-stone-100 rounded-lg">
+      <div className="text-center p-4 bg-stone-100 rounded-lg">
         <p className="text-xs text-stone-500">お困りの際はこちら</p>
         <a
           href="#"
@@ -274,7 +284,7 @@ export default function OrderSummary({
         >
           よくある質問とヘルプ
         </a>
-      </div> */}
+      </div>
     </div>
   );
 }
