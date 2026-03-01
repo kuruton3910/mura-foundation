@@ -19,6 +19,8 @@ export async function POST(request: NextRequest) {
       .insert({
         code: body.code.trim().toUpperCase(),
         discount_percent: body.discount_percent,
+        discount_type: "percentage",        // 既存NOT NULL列との互換性
+        discount_value: body.discount_percent, // 既存NOT NULL列との互換性
         is_member_only: body.is_member_only ?? false,
         valid_from: body.valid_from ?? null,
         valid_until: body.valid_until ?? null,
