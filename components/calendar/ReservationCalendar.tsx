@@ -217,6 +217,8 @@ export default function ReservationCalendar() {
       return {
         cell: "bg-white p-2 h-20 flex flex-col items-center opacity-20",
         text: "",
+        price: "",
+        priceCls: "",
         badge: "",
         badgeCls: "",
       };
@@ -237,10 +239,18 @@ export default function ReservationCalendar() {
     const isInRange =
       checkinDate && checkoutDate && d > checkinDate && d < checkoutDate;
 
+    const isWeekend = isWeekendNight(d);
+    const nightFee = isWeekend
+      ? settings.site_fee_weekend
+      : settings.site_fee_weekday;
+    const priceLabel = `¥${nightFee.toLocaleString()}`;
+
     if (isCheckin)
       return {
         cell: "bg-[#2D4030] p-2 h-20 flex flex-col items-center cursor-pointer rounded-l-lg",
         text: "text-white font-bold",
+        price: priceLabel,
+        priceCls: "text-[9px] leading-none text-emerald-300 mt-0.5",
         badge: "IN",
         badgeCls: "text-[10px] mt-1 text-emerald-200",
       };
@@ -248,6 +258,8 @@ export default function ReservationCalendar() {
       return {
         cell: "bg-[#2D4030] p-2 h-20 flex flex-col items-center cursor-pointer rounded-r-lg",
         text: "text-white font-bold",
+        price: "",
+        priceCls: "",
         badge: "OUT",
         badgeCls: "text-[10px] mt-1 text-emerald-200",
       };
@@ -256,26 +268,31 @@ export default function ReservationCalendar() {
       return {
         cell: "bg-emerald-100 p-2 h-20 flex flex-col items-center cursor-pointer",
         text: "text-[#2D4030]",
+        price: priceLabel,
+        priceCls: `text-[9px] leading-none mt-0.5 ${isWeekend ? "text-amber-600" : "text-stone-500"}`,
         badge: `残${spots}`,
-        badgeCls: `text-[10px] mt-1 ${badgeColor}`,
+        badgeCls: `text-[10px] mt-0.5 ${badgeColor}`,
       };
     }
 
     switch (status) {
       case "available": {
-        const isWeekend = isWeekendNight(d);
         const badgeColor = (spots ?? 0) <= LOW_SPOTS_THRESHOLD ? "text-red-500 font-bold" : "text-[#2D4030]";
         return {
           cell: `${isWeekend ? "bg-orange-50 hover:bg-orange-100" : "bg-white hover:bg-green-50"} p-2 h-20 flex flex-col items-center cursor-pointer border-2 border-transparent hover:border-[#2D4030] transition-all`,
           text: "",
+          price: priceLabel,
+          priceCls: `text-[9px] leading-none mt-0.5 font-medium ${isWeekend ? "text-amber-500" : "text-stone-400"}`,
           badge: `残${spots}`,
-          badgeCls: `text-[10px] mt-1 ${badgeColor}`,
+          badgeCls: `text-[10px] mt-0.5 ${badgeColor}`,
         };
       }
       case "full":
         return {
           cell: "bg-white p-2 h-20 flex flex-col items-center opacity-40 cursor-not-allowed",
           text: "text-gray-400",
+          price: "",
+          priceCls: "",
           badge: "×",
           badgeCls: "text-[10px] mt-1 text-red-400",
         };
@@ -283,6 +300,8 @@ export default function ReservationCalendar() {
         return {
           cell: "bg-white p-2 h-20 flex flex-col items-center opacity-25 cursor-not-allowed",
           text: "text-gray-400",
+          price: "",
+          priceCls: "",
           badge: "",
           badgeCls: "",
         };
@@ -290,6 +309,8 @@ export default function ReservationCalendar() {
         return {
           cell: "bg-stone-50 p-2 h-20 flex flex-col items-center opacity-40 cursor-not-allowed",
           text: "text-stone-400",
+          price: "",
+          priceCls: "",
           badge: "受付前",
           badgeCls: "text-[9px] mt-1 text-stone-400",
         };
@@ -297,6 +318,8 @@ export default function ReservationCalendar() {
         return {
           cell: "bg-blue-50 p-2 h-20 flex flex-col items-center opacity-40 cursor-not-allowed",
           text: "text-blue-300",
+          price: "",
+          priceCls: "",
           badge: "準備中",
           badgeCls: "text-[9px] mt-1 text-blue-400",
         };
@@ -304,6 +327,8 @@ export default function ReservationCalendar() {
         return {
           cell: "bg-amber-50 p-2 h-20 flex flex-col items-center opacity-50 cursor-not-allowed",
           text: "text-amber-600",
+          price: "",
+          priceCls: "",
           badge: "NAKAMA",
           badgeCls: "text-[9px] mt-1 text-amber-500",
         };
@@ -311,6 +336,8 @@ export default function ReservationCalendar() {
         return {
           cell: "bg-red-50 p-2 h-20 flex flex-col items-center opacity-40 cursor-not-allowed",
           text: "text-red-300",
+          price: "",
+          priceCls: "",
           badge: "休業",
           badgeCls: "text-[9px] mt-1 text-red-400",
         };
@@ -318,6 +345,8 @@ export default function ReservationCalendar() {
         return {
           cell: "bg-white p-2 h-20 flex flex-col items-center opacity-30 cursor-not-allowed",
           text: "text-gray-400",
+          price: "",
+          priceCls: "",
           badge: "",
           badgeCls: "",
         };
@@ -431,6 +460,9 @@ export default function ReservationCalendar() {
               >
                 {date.getDate()}
               </span>
+              {style.price && (
+                <span className={style.priceCls}>{style.price}</span>
+              )}
               {style.badge && (
                 <span className={style.badgeCls}>{style.badge}</span>
               )}
@@ -452,11 +484,11 @@ export default function ReservationCalendar() {
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 bg-white border border-gray-300 rounded inline-block" />{" "}
-          平日
+          平日 <span className="text-stone-500">¥{settings.site_fee_weekday.toLocaleString()}</span>
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 bg-orange-50 border border-orange-200 rounded inline-block" />{" "}
-          週末
+          週末 <span className="text-amber-500 font-medium">¥{settings.site_fee_weekend.toLocaleString()}</span>
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 bg-amber-50 border border-amber-200 rounded inline-block" />{" "}
