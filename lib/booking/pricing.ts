@@ -1,11 +1,5 @@
 import type { ReservationFormData } from "./schema";
 
-export const PRICES = {
-  adultPerNight: 1500, // 大人/泊
-  childPerNight: 500, // 子ども/泊
-  petPerNight: 500, // ペット/泊
-};
-
 export type SiteFees = {
   weekday: number;
   weekend: number;
@@ -14,6 +8,18 @@ export type SiteFees = {
 export const DEFAULT_SITE_FEES: SiteFees = {
   weekday: 2500,
   weekend: 3000,
+};
+
+export type PersonFees = {
+  /** 区画料に含まれる人数（大人換算）。この人数まで追加料金なし */
+  includedPersonsPerSite: number;
+  /** 含まれる人数を超えた場合の追加料金（大人1名換算/泊） */
+  extraPersonFeePerNight: number;
+};
+
+export const DEFAULT_PERSON_FEES: PersonFees = {
+  includedPersonsPerSite: 3,
+  extraPersonFeePerNight: 1500,
 };
 
 export type RentalOption = {
@@ -41,6 +47,19 @@ export function calcNights(
   return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
 }
 
+/**
+ * 大人換算人数を計算する
+ * 子どもとペットは合算して 2 人で大人 1 名とカウント
+ * 例: 大人2 + 子ども1 + ペット1 → 2 + ceil(2/2) = 3
+ */
+export function calcAdultEquivalents(
+  adults: number,
+  children: number,
+  pets: number,
+): number {
+  return adults + Math.ceil((children + pets) / 2);
+}
+
 /** クーポン割引の対象となる区画料のみを計算 */
 export function calcSiteFee(
   data: ReservationFormData,
@@ -57,6 +76,22 @@ export function calcSiteFee(
   return total;
 }
 
+/**
+ * 区画料に含まれる人数を超えた分の追加料金を計算する
+ * 各区画に includedPersonsPerSite 名まで含まれる
+ */
+export function calcExtraPersonFee(
+  data: ReservationFormData,
+  personFees: PersonFees = DEFAULT_PERSON_FEES,
+): number {
+  const nights = calcNights(data.checkinDate, data.checkoutDate);
+  if (nights === 0) return 0;
+  const equiv = calcAdultEquivalents(data.adults, data.children, data.pets);
+  const included = data.vehicleCount * personFees.includedPersonsPerSite;
+  const extra = Math.max(0, equiv - included);
+  return extra * personFees.extraPersonFeePerNight * nights;
+}
+
 export function calcOptionsFee(
   optionCounts: Record<string, number>,
   options: RentalOption[],
@@ -71,48 +106,43 @@ export function calcTotal(
   data: ReservationFormData,
   options: RentalOption[] = [],
   siteFees: SiteFees = DEFAULT_SITE_FEES,
+  personFees: PersonFees = DEFAULT_PERSON_FEES,
 ): number {
   const nights = calcNights(data.checkinDate, data.checkoutDate);
   if (nights === 0) return 0;
 
   const siteFee = calcSiteFee(data, siteFees);
-  const adultFee = data.adults * PRICES.adultPerNight * nights;
-  const childFee = data.children * PRICES.childPerNight * nights;
-  const petFee = data.pets * PRICES.petPerNight * nights;
+  const extraPersonFee = calcExtraPersonFee(data, personFees);
   const optFee = calcOptionsFee(data.optionCounts ?? {}, options);
 
-  return siteFee + adultFee + childFee + petFee + optFee;
+  return siteFee + extraPersonFee + optFee;
 }
 
 export function calcBreakdown(
   data: ReservationFormData,
   options: RentalOption[] = [],
   siteFees: SiteFees = DEFAULT_SITE_FEES,
+  personFees: PersonFees = DEFAULT_PERSON_FEES,
 ): { label: string; amount: number }[] {
   const nights = calcNights(data.checkinDate, data.checkoutDate);
   if (nights === 0) return [];
 
   const items: { label: string; amount: number }[] = [];
+  const included = personFees.includedPersonsPerSite;
 
   const siteFee = calcSiteFee(data, siteFees);
   items.push({
-    label: `区画料 ${data.vehicleCount}区画 × ${nights}泊`,
+    label: `区画料 ${data.vehicleCount}区画 × ${nights}泊（大人${included}名まで含む）`,
     amount: siteFee,
   });
-  items.push({
-    label: `大人 ${data.adults}名 × ${nights}泊`,
-    amount: data.adults * PRICES.adultPerNight * nights,
-  });
-  if (data.children > 0) {
+
+  const equiv = calcAdultEquivalents(data.adults, data.children, data.pets);
+  const totalIncluded = data.vehicleCount * included;
+  const extra = Math.max(0, equiv - totalIncluded);
+  if (extra > 0) {
     items.push({
-      label: `子ども ${data.children}名 × ${nights}泊`,
-      amount: data.children * PRICES.childPerNight * nights,
-    });
-  }
-  if (data.pets > 0) {
-    items.push({
-      label: `ペット ${data.pets}匹 × ${nights}泊`,
-      amount: data.pets * PRICES.petPerNight * nights,
+      label: `追加人数 ${extra}名分 × ${nights}泊`,
+      amount: extra * personFees.extraPersonFeePerNight * nights,
     });
   }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
-import { calcTotal, calcSiteFee, type RentalOption, type SiteFees } from "@/lib/booking/pricing";
+import { calcTotal, calcSiteFee, type RentalOption, type SiteFees, type PersonFees, DEFAULT_PERSON_FEES } from "@/lib/booking/pricing";
 import type { ReservationFormData } from "@/lib/booking/schema";
 import { DEFAULT_SETTINGS } from "@/lib/booking/siteSettings";
 
@@ -51,6 +51,12 @@ export async function POST(request: NextRequest) {
     const siteFees: SiteFees = {
       weekday: settings.site_fee_weekday ?? DEFAULT_SETTINGS.site_fee_weekday,
       weekend: settings.site_fee_weekend ?? DEFAULT_SETTINGS.site_fee_weekend,
+    };
+
+    // ── 人数料金 ─────────────────────────────────────────────────────
+    const personFees: PersonFees = {
+      includedPersonsPerSite: settings.included_persons_per_site ?? DEFAULT_PERSON_FEES.includedPersonsPerSite,
+      extraPersonFeePerNight: settings.extra_person_fee_per_night ?? DEFAULT_PERSON_FEES.extraPersonFeePerNight,
     };
 
     // ── 予約受付期間チェック ──────────────────────────────────────────
@@ -160,7 +166,7 @@ export async function POST(request: NextRequest) {
       checkinDate: checkin,
       checkoutDate: checkout,
     };
-    const baseTotal = calcTotal(formDataWithDates, options, siteFees);
+    const baseTotal = calcTotal(formDataWithDates, options, siteFees, personFees);
 
     // ── クーポン検証 ──────────────────────────────────────────────────
     let discountAmount = 0;

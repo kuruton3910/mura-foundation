@@ -14,6 +14,8 @@ export type SiteSettings = {
   booking_window_member_days: number; // NAKAMA: 何日前から受付
   site_fee_weekday: number; // 平日区画料（月〜木始まりの夜）
   site_fee_weekend: number; // 週末区画料（金・土始まりの夜）
+  included_persons_per_site: number; // 区画料に含まれる人数（大人換算）
+  extra_person_fee_per_night: number; // 含まれる人数を超えた場合の追加料金/泊
   terms_groups: TermGroup[];
 };
 
@@ -71,5 +73,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   booking_window_member_days: 60,
   site_fee_weekday: 2500,
   site_fee_weekend: 3000,
+  included_persons_per_site: 3,
+  extra_person_fee_per_night: 1500,
   terms_groups: DEFAULT_TERM_GROUPS,
 };

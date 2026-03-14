@@ -263,6 +263,47 @@ export default function SettingsEditor({
         </div>
       </section>
 
+      {/* 人数料金設定 */}
+      <section className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+        <div className="bg-stone-50 px-5 py-3 border-b border-stone-200">
+          <h2 className="font-bold text-stone-700">人数料金設定</h2>
+          <p className="text-xs text-stone-500 mt-0.5">
+            区画料に含まれる人数を超えた場合の追加料金。子ども・ペットは合算して2人で大人1名分。
+          </p>
+        </div>
+        <div className="px-5">
+          <div className="flex items-center gap-4 py-3 border-b border-stone-100">
+            <span className="w-44 text-sm text-stone-600 shrink-0">区画料に含まれる人数</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={values.included_persons_per_site as number}
+                onChange={(e) => handleChange("included_persons_per_site", Number(e.target.value))}
+                className="w-16 border border-stone-300 rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-[#2D4030]"
+              />
+              <span className="text-sm text-stone-500">名（大人換算）/ 区画</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 py-3">
+            <span className="w-44 text-sm text-stone-600 shrink-0">追加1名あたりの料金</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-stone-500">¥</span>
+              <input
+                type="number"
+                min={0}
+                step={100}
+                value={values.extra_person_fee_per_night as number}
+                onChange={(e) => handleChange("extra_person_fee_per_night", Number(e.target.value))}
+                className="w-24 border border-stone-300 rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-[#2D4030]"
+              />
+              <span className="text-sm text-stone-500">/ 泊</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 利用規約 */}
       <section className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         <div className="bg-stone-50 px-5 py-3 border-b border-stone-200 flex items-center justify-between">
