@@ -74,35 +74,38 @@ export default function StepPayment() {
         </div>
       </section>
 
-      {/* Payment placeholder */}
+      {/* お支払い案内 */}
       <section className="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
         <h2 className="text-xl font-bold mb-6 flex items-center border-l-4 border-[#2D4030] pl-3">
-          お支払い
+          お支払いについて
         </h2>
 
-        <div className="flex flex-col items-center justify-center py-12 bg-stone-50 rounded-xl border-2 border-dashed border-stone-300 text-center">
-          <div className="w-16 h-16 bg-stone-200 rounded-full flex items-center justify-center mb-4">
-            <svg
-              className="w-8 h-8 text-stone-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-              />
-            </svg>
+        <div className="bg-stone-50 rounded-xl p-6 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-[#2D4030]/10 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+              <svg
+                className="w-5 h-5 text-[#2D4030]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="font-bold text-stone-700">
+                「予約を確定する」ボタンを押すと、決済画面に移動します。
+              </p>
+              <p className="text-sm text-stone-500 mt-1">
+                クレジットカード・デビットカードでお支払いいただけます。
+              </p>
+            </div>
           </div>
-          <p className="font-bold text-stone-600 mb-1">
-            Stripe 決済 (実装予定)
-          </p>
-          {/* <p className="text-sm text-stone-400 max-w-xs">
-            Phase 2でStripe
-            Checkoutを統合します。クレジットカード・デビットカードに対応予定です。
-          </p> */}
         </div>
       </section>
     </div>

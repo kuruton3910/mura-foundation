@@ -2,7 +2,6 @@
 
 import React, { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import type { Reservation } from "@/lib/supabase/types";
 import { formatDate } from "@/lib/booking/pricing";
 
@@ -22,20 +21,15 @@ function BookingCompleteContent() {
     }
 
     async function fetchReservation() {
-      const supabase = createClient();
-
-      // Webhook が処理されるまでリトライ（最大5回、計約15秒）
+      // サーバーAPI経由で取得（RLSを回避）
+      // Webhook処理待ちのためリトライ（最大5回、計約15秒）
       for (let attempt = 0; attempt < 5; attempt++) {
         await new Promise((r) => setTimeout(r, attempt === 0 ? 1500 : 3000));
 
-        const { data, error } = await supabase
-          .from("reservations")
-          .select("*")
-          .eq("stripe_session_id", sessionId)
-          .single();
-
-        if (!error && data) {
-          setReservation(data as Reservation);
+        const res = await fetch(`/api/reservations/by-session?session_id=${encodeURIComponent(sessionId!)}`);
+        if (res.ok) {
+          const { reservation } = await res.json();
+          setReservation(reservation as Reservation);
           setLoading(false);
           return;
         }
