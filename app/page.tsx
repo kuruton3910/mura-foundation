@@ -100,8 +100,19 @@ export default function Page() {
       }
       const { reservationId } = await reservationRes.json();
 
-      // 仮: Stripeをスキップして予約完了画面へ（Stripe実装後に差し替え）
-      window.location.href = `/booking-complete?reservation_id=${reservationId}`;
+      // 2. Stripe Checkout セッションを作成してリダイレクト
+      const checkoutRes = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reservationId }),
+      });
+      if (!checkoutRes.ok) {
+        const { error: msg } = await checkoutRes.json();
+        setStepError(msg || "決済セッションの作成に失敗しました");
+        return;
+      }
+      const { checkoutUrl } = await checkoutRes.json();
+      window.location.href = checkoutUrl;
     } catch {
       setStepError("通信エラーが発生しました。もう一度お試しください。");
     } finally {

@@ -23,20 +23,25 @@ function BookingCompleteContent() {
 
     async function fetchReservation() {
       const supabase = createClient();
-      // Webhook が処理されるまで少し待つ
-      await new Promise((r) => setTimeout(r, 1500));
 
-      const { data, error } = await supabase
-        .from("reservations")
-        .select("*")
-        .eq("stripe_session_id", sessionId)
-        .single();
+      // Webhook が処理されるまでリトライ（最大5回、計約15秒）
+      for (let attempt = 0; attempt < 5; attempt++) {
+        await new Promise((r) => setTimeout(r, attempt === 0 ? 1500 : 3000));
 
-      if (error || !data) {
-        setError("予約情報の取得に失敗しました");
-      } else {
-        setReservation(data as Reservation);
+        const { data, error } = await supabase
+          .from("reservations")
+          .select("*")
+          .eq("stripe_session_id", sessionId)
+          .single();
+
+        if (!error && data) {
+          setReservation(data as Reservation);
+          setLoading(false);
+          return;
+        }
       }
+
+      setError("予約情報の取得に失敗しました。しばらくしてからページを再読み込みしてください。");
       setLoading(false);
     }
 
