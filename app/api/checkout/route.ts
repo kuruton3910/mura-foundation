@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
     // Stripe クライアントをリクエスト時に初期化（ビルド時に環境変数を参照しない）
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
