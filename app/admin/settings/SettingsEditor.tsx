@@ -185,12 +185,15 @@ export default function SettingsEditor({
       {/* シーズン設定 */}
       <section className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         <div className="bg-stone-50 px-5 py-3 border-b border-stone-200">
-          <h2 className="font-bold text-stone-700">シーズン設定</h2>
-          <p className="text-xs text-stone-500 mt-0.5">
+          <h2 className="font-bold text-stone-700 flex items-center gap-2">
+            <span className="inline-block w-1 h-5 bg-[#2D4030] rounded-full" />
+            シーズン設定
+          </h2>
+          <p className="text-sm text-stone-500 mt-0.5 ml-3">
             カレンダーに表示する営業シーズンの開始・終了日
           </p>
         </div>
-        <div className="px-5">
+        <div className="px-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6">
           <MonthDayInput
             label="シーズン開始日"
             monthKey="season_open_month"
@@ -218,12 +221,15 @@ export default function SettingsEditor({
       {/* 予約受付期間 */}
       <section className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         <div className="bg-stone-50 px-5 py-3 border-b border-stone-200">
-          <h2 className="font-bold text-stone-700">予約受付期間</h2>
-          <p className="text-xs text-stone-500 mt-0.5">
+          <h2 className="font-bold text-stone-700 flex items-center gap-2">
+            <span className="inline-block w-1 h-5 bg-[#2D4030] rounded-full" />
+            予約受付期間
+          </h2>
+          <p className="text-sm text-stone-500 mt-0.5 ml-3">
             何日前から予約を受け付けるか
           </p>
         </div>
-        <div className="px-5">
+        <div className="px-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6">
           <DaysInput
             label="一般ゲスト"
             fieldKey="booking_window_days"
@@ -242,12 +248,15 @@ export default function SettingsEditor({
       {/* 料金設定 */}
       <section className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         <div className="bg-stone-50 px-5 py-3 border-b border-stone-200">
-          <h2 className="font-bold text-stone-700">区画料金設定</h2>
-          <p className="text-xs text-stone-500 mt-0.5">
+          <h2 className="font-bold text-stone-700 flex items-center gap-2">
+            <span className="inline-block w-1 h-5 bg-[#2D4030] rounded-full" />
+            区画料金設定
+          </h2>
+          <p className="text-sm text-stone-500 mt-0.5 ml-3">
             平日（月〜木始まりの夜）と週末（金・土始まりの夜）の1区画あたりの料金
           </p>
         </div>
-        <div className="px-5">
+        <div className="px-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6">
           <PriceInput
             label="平日料金（月〜木）"
             fieldKey="site_fee_weekday"
@@ -266,12 +275,15 @@ export default function SettingsEditor({
       {/* 人数料金設定 */}
       <section className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         <div className="bg-stone-50 px-5 py-3 border-b border-stone-200">
-          <h2 className="font-bold text-stone-700">人数料金設定</h2>
-          <p className="text-xs text-stone-500 mt-0.5">
+          <h2 className="font-bold text-stone-700 flex items-center gap-2">
+            <span className="inline-block w-1 h-5 bg-[#2D4030] rounded-full" />
+            人数料金設定
+          </h2>
+          <p className="text-sm text-stone-500 mt-0.5 ml-3">
             区画料に含まれる人数を超えた場合の追加料金。子ども・ペットは合算して2人で大人1名分。
           </p>
         </div>
-        <div className="px-5">
+        <div className="px-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6">
           <div className="flex items-center gap-4 py-3 border-b border-stone-100">
             <span className="w-44 text-sm text-stone-600 shrink-0">区画料に含まれる人数</span>
             <div className="flex items-center gap-2">
@@ -308,8 +320,11 @@ export default function SettingsEditor({
       <section className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         <div className="bg-stone-50 px-5 py-3 border-b border-stone-200 flex items-center justify-between">
           <div>
-            <h2 className="font-bold text-stone-700">利用規約</h2>
-            <p className="text-xs text-stone-500 mt-0.5">
+            <h2 className="font-bold text-stone-700 flex items-center gap-2">
+              <span className="inline-block w-1 h-5 bg-[#2D4030] rounded-full" />
+              利用規約
+            </h2>
+            <p className="text-sm text-stone-500 mt-0.5 ml-3">
               グループ単位で編集できます。各項目は改行で区切ってください。
             </p>
           </div>
@@ -326,10 +341,15 @@ export default function SettingsEditor({
                   className="flex-1 border border-stone-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#2D4030]"
                   placeholder="グループタイトル"
                 />
+                {/* グループ削除ボタン: 確認ダイアログ付き・目立つスタイル */}
                 <button
                   type="button"
-                  onClick={() => removeGroup(i)}
-                  className="text-xs text-red-400 hover:text-red-600 shrink-0"
+                  onClick={() => {
+                    if (window.confirm(`「${group.title}」グループを削除しますか？この操作は保存前であれば元に戻せます。`)) {
+                      removeGroup(i);
+                    }
+                  }}
+                  className="text-xs text-red-500 font-medium px-2 py-1 rounded hover:bg-red-50 hover:text-red-700 transition-colors shrink-0 border border-transparent hover:border-red-200"
                 >
                   削除
                 </button>

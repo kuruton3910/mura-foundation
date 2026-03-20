@@ -21,7 +21,7 @@ export default async function AdminSettingsPage() {
   };
 
   return (
-    <div className="p-8 max-w-2xl">
+    <div className="p-8 max-w-4xl">
       <h1 className="text-2xl font-bold text-stone-800 mb-2">サイト設定</h1>
       <p className="text-sm text-stone-500 mb-8">
         予約カレンダーのシーズンや受付期間を変更できます。変更はすぐに反映されます。

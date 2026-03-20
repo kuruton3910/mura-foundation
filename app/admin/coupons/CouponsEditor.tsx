@@ -123,7 +123,8 @@ export default function CouponsEditor({ coupons }: { coupons: Coupon[] }) {
             </p>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* レスポンシブ対応: モバイルでは1列、sm以上で2列 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="クーポンコード（大文字）">
               <input
                 type="text"
@@ -210,72 +211,136 @@ export default function CouponsEditor({ coupons }: { coupons: Coupon[] }) {
         </form>
       )}
 
-      {/* Coupons list */}
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
-        {coupons.length > 0 ? (
-          <table className="w-full text-sm">
-            <thead className="bg-stone-50 border-b border-stone-200">
-              <tr className="text-left text-stone-500">
-                <th className="px-4 py-3 font-medium">コード</th>
-                <th className="px-4 py-3 font-medium">割引</th>
-                <th className="px-4 py-3 font-medium">有効期間</th>
-                <th className="px-4 py-3 font-medium">使用回数</th>
-                <th className="px-4 py-3 font-medium text-center">会員限定</th>
-                <th className="px-4 py-3 font-medium text-center">
-                  ステータス
-                </th>
-                <th className="px-4 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {coupons.map((c) => (
-                <tr key={c.id} className="hover:bg-stone-50">
-                  <td className="px-4 py-3 font-mono font-bold text-stone-800">
+      {/* クーポン一覧 */}
+      {coupons.length > 0 ? (
+        <>
+          {/* モバイル用カード表示 */}
+          <div className="sm:hidden space-y-3">
+            {coupons.map((c) => (
+              <div
+                key={c.id}
+                className="bg-white rounded-xl border border-stone-200 p-4 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-stone-800">
                     {c.code}
-                  </td>
-                  <td className="px-4 py-3 text-stone-600">
-                    {c.discount_percent}%
-                  </td>
-                  <td className="px-4 py-3 text-stone-500 text-xs">
-                    {c.valid_from ?? "—"} 〜 {c.valid_until ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-stone-600">
-                    {c.used_count} / {c.max_uses ?? "∞"}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {c.is_member_only ? "✓" : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => toggleActive(c)}
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
-                        c.is_active
-                          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                          : "bg-stone-100 text-stone-500 hover:bg-stone-200"
-                      }`}
-                    >
-                      {c.is_active ? "有効" : "無効"}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => deleteCoupon(c.id)}
-                      disabled={deleting === c.id}
-                      className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
-                    >
-                      削除
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <div className="p-12 text-center text-stone-400">
-            <p>クーポンがありません。</p>
+                  </span>
+                  <button
+                    onClick={() => toggleActive(c)}
+                    className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
+                      c.is_active
+                        ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                        : "bg-stone-100 text-stone-500 hover:bg-stone-200"
+                    }`}
+                  >
+                    {c.is_active ? "有効" : "無効"}
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-stone-400 text-xs">割引</span>
+                    <p className="text-stone-600">{c.discount_percent}%</p>
+                  </div>
+                  <div>
+                    <span className="text-stone-400 text-xs">使用回数</span>
+                    <p className="text-stone-600">
+                      {c.used_count} / {c.max_uses ?? "∞"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-stone-400 text-xs">有効期間</span>
+                    <p className="text-stone-500 text-xs">
+                      {c.valid_from ?? "—"} 〜 {c.valid_until ?? "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-stone-400 text-xs">会員限定</span>
+                    <p className="text-stone-600">
+                      {c.is_member_only ? "はい" : "いいえ"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => deleteCoupon(c.id)}
+                    disabled={deleting === c.id}
+                    className="text-xs px-3 py-1.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+                  >
+                    削除
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-        )}
-      </div>
+
+          {/* デスクトップ用テーブル表示 */}
+          <div className="hidden sm:block bg-white rounded-xl border border-stone-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-160">
+                <thead className="bg-stone-50 border-b border-stone-200">
+                  <tr className="text-left text-stone-500">
+                    <th className="px-4 py-3 font-medium">コード</th>
+                    <th className="px-4 py-3 font-medium">割引</th>
+                    <th className="px-4 py-3 font-medium">有効期間</th>
+                    <th className="px-4 py-3 font-medium">使用回数</th>
+                    <th className="px-4 py-3 font-medium text-center">会員限定</th>
+                    <th className="px-4 py-3 font-medium text-center">
+                      ステータス
+                    </th>
+                    <th className="px-4 py-3 font-medium"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {coupons.map((c) => (
+                    <tr key={c.id} className="hover:bg-stone-50">
+                      <td className="px-4 py-3 font-mono font-bold text-stone-800">
+                        {c.code}
+                      </td>
+                      <td className="px-4 py-3 text-stone-600">
+                        {c.discount_percent}%
+                      </td>
+                      <td className="px-4 py-3 text-stone-500 text-xs">
+                        {c.valid_from ?? "—"} 〜 {c.valid_until ?? "—"}
+                      </td>
+                      <td className="px-4 py-3 text-stone-600">
+                        {c.used_count} / {c.max_uses ?? "∞"}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {c.is_member_only ? "✓" : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => toggleActive(c)}
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
+                            c.is_active
+                              ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                              : "bg-stone-100 text-stone-500 hover:bg-stone-200"
+                          }`}
+                        >
+                          {c.is_active ? "有効" : "無効"}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => deleteCoupon(c.id)}
+                          disabled={deleting === c.id}
+                          className="text-xs px-3 py-1.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+                        >
+                          削除
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="bg-white rounded-xl border border-stone-200 p-12 text-center text-stone-400">
+          <p>クーポンがありません。</p>
+        </div>
+      )}
     </div>
   );
 }

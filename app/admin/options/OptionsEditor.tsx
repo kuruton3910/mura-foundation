@@ -178,7 +178,8 @@ export default function OptionsEditor() {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            {/* アクションボタン: モバイルで折り返し可能 */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => handleToggleActive(opt)}

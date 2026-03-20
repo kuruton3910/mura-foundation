@@ -193,47 +193,55 @@ export default function AvailabilityEditor({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-auto">
       {/* 一括設定パネル */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
-        <h2 className="font-bold text-amber-900 mb-1">シーズン一括設定</h2>
-        <p className="text-xs text-amber-700 mb-4">
+      <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-1 h-5 bg-amber-500 rounded-full" />
+          <h2 className="font-bold text-amber-900 text-base">シーズン一括設定</h2>
+        </div>
+        <p className="text-sm text-amber-700 mb-4 ml-3">
           クローズシーズン（例：11月〜3月）をまとめて休業設定できます
         </p>
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-stone-500">開始日</label>
-            <input
-              type="date"
-              value={bulkFrom}
-              onChange={(e) => setBulkFrom(e.target.value)}
-              className="border border-stone-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400"
-            />
+        {/* 日付入力とボタンを縦に分割してモバイルでも見やすく */}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-stone-600">開始日</label>
+              <input
+                type="date"
+                value={bulkFrom}
+                onChange={(e) => setBulkFrom(e.target.value)}
+                className="border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+            </div>
+            <span className="text-stone-400 pb-2 font-medium">〜</span>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-stone-600">終了日</label>
+              <input
+                type="date"
+                value={bulkTo}
+                onChange={(e) => setBulkTo(e.target.value)}
+                className="border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+            </div>
           </div>
-          <span className="text-stone-400 pb-1">〜</span>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-stone-500">終了日</label>
-            <input
-              type="date"
-              value={bulkTo}
-              onChange={(e) => setBulkTo(e.target.value)}
-              className="border border-stone-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-400"
-            />
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleBulkClose}
+              disabled={bulkSaving}
+              className="px-5 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 shadow-sm"
+            >
+              {bulkSaving ? "処理中..." : "一括休業にする"}
+            </button>
+            <button
+              onClick={handleBulkOpen}
+              disabled={bulkSaving}
+              className="px-5 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm"
+            >
+              {bulkSaving ? "処理中..." : "一括解除する"}
+            </button>
           </div>
-          <button
-            onClick={handleBulkClose}
-            disabled={bulkSaving}
-            className="px-4 py-1.5 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 transition-colors disabled:opacity-50"
-          >
-            {bulkSaving ? "処理中..." : "一括休業にする"}
-          </button>
-          <button
-            onClick={handleBulkOpen}
-            disabled={bulkSaving}
-            className="px-4 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded hover:bg-emerald-700 transition-colors disabled:opacity-50"
-          >
-            {bulkSaving ? "処理中..." : "一括解除する"}
-          </button>
         </div>
         {bulkMessage && (
           <p
@@ -250,10 +258,11 @@ export default function AvailabilityEditor({
       {Object.entries(months).map(([month, monthDates]) => (
         <div
           key={month}
-          className="bg-white rounded-xl border border-stone-200 overflow-hidden"
+          className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm"
         >
-          <div className="bg-stone-50 px-5 py-3 border-b border-stone-200">
-            <h2 className="font-bold text-stone-700">
+          {/* 月ヘッダーを目立たせる */}
+          <div className="bg-[#2D4030] px-5 py-3">
+            <h2 className="font-bold text-white text-base">
               {new Date(month + "-01").toLocaleDateString("ja-JP", {
                 year: "numeric",
                 month: "long",
@@ -277,88 +286,96 @@ export default function AvailabilityEditor({
               return (
                 <div
                   key={date}
-                  className={`flex flex-wrap items-center gap-3 px-5 py-3 text-sm ${
+                  className={`px-5 py-3 text-sm ${
                     isClosed ? "bg-red-50" : ""
                   }`}
                 >
-                  <span className="w-24 font-medium text-stone-700">
-                    {date.slice(5)} ({dayOfWeek})
-                  </span>
+                  {/* 1行目: 日付・ステータス・予約数 */}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="w-24 font-medium text-stone-700 shrink-0">
+                      {date.slice(5)} ({dayOfWeek})
+                    </span>
 
-                  <span
-                    className={`w-20 text-center text-xs font-medium px-2 py-1 rounded-full ${
-                      isClosed
-                        ? "bg-red-100 text-red-700"
-                        : available <= 0
-                          ? "bg-stone-100 text-stone-500"
-                          : available <= 2
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-emerald-100 text-emerald-700"
-                    }`}
-                  >
-                    {isClosed ? "休業" : `残${available}区画`}
-                  </span>
+                    <span
+                      className={`w-20 text-center text-xs font-medium px-2 py-1 rounded-full ${
+                        isClosed
+                          ? "bg-red-100 text-red-700"
+                          : available <= 0
+                            ? "bg-stone-100 text-stone-500"
+                            : available <= 2
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-emerald-100 text-emerald-700"
+                      }`}
+                    >
+                      {isClosed ? "休業" : `残${available}区画`}
+                    </span>
 
-                  <span className="text-stone-400 text-xs">
-                    予約済: {booked}区画
-                  </span>
-
-                  {/* アイコン選択 */}
-                  <div className="flex items-center gap-1 ml-auto">
-                    <span className="text-xs text-stone-400 mr-1">アイコン:</span>
-                    {ICONS.map((ic) => (
-                      <button
-                        key={ic.value}
-                        type="button"
-                        onClick={() =>
-                          updateIcon(date, currentIcon === ic.value ? null : ic.value)
-                        }
-                        disabled={isSaving}
-                        title={ic.label}
-                        className={`w-7 h-7 text-base flex items-center justify-center rounded transition-colors disabled:opacity-40 ${
-                          currentIcon === ic.value
-                            ? "bg-stone-200 ring-1 ring-stone-400"
-                            : "hover:bg-stone-100"
-                        }`}
-                      >
-                        {ic.value}
-                      </button>
-                    ))}
+                    <span className="text-stone-400 text-xs">
+                      予約済: {booked}区画
+                    </span>
                   </div>
 
-                  {!isClosed && (
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs text-stone-500">
-                        最大区画数:
-                      </label>
-                      <select
-                        value={maxSites}
-                        onChange={(e) =>
-                          updateSites(date, Number(e.target.value))
-                        }
-                        disabled={isSaving}
-                        className="border border-stone-200 rounded px-1.5 py-0.5 text-xs text-stone-700 focus:outline-none"
-                      >
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <option key={n} value={n}>
-                            {n}
-                          </option>
-                        ))}
-                      </select>
+                  {/* 2行目: 操作パネル（アイコン・区画数・休業ボタン） */}
+                  <div className="flex items-center gap-3 mt-2 flex-wrap sm:ml-0 ml-0">
+                    {/* アイコン選択 */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-stone-500 mr-0.5">アイコン:</span>
+                      {ICONS.map((ic) => (
+                        <button
+                          key={ic.value}
+                          type="button"
+                          onClick={() =>
+                            updateIcon(date, currentIcon === ic.value ? null : ic.value)
+                          }
+                          disabled={isSaving}
+                          title={ic.label}
+                          className={`w-8 h-8 text-base flex items-center justify-center rounded-lg transition-all disabled:opacity-40 ${
+                            currentIcon === ic.value
+                              ? "bg-[#2D4030]/10 ring-2 ring-[#2D4030] shadow-sm"
+                              : "hover:bg-stone-100 ring-1 ring-stone-200"
+                          }`}
+                        >
+                          {ic.value}
+                        </button>
+                      ))}
                     </div>
-                  )}
 
-                  <button
-                    onClick={() => toggleClosed(date)}
-                    disabled={isSaving}
-                    className={`px-3 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50 ${
-                      isClosed
-                        ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                        : "bg-red-100 text-red-700 hover:bg-red-200"
-                    }`}
-                  >
-                    {isSaving ? "..." : isClosed ? "休業解除" : "休業にする"}
-                  </button>
+                    {/* 区画数セレクト（休業でないとき） */}
+                    {!isClosed && (
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-stone-500">
+                          最大区画数:
+                        </label>
+                        <select
+                          value={maxSites}
+                          onChange={(e) =>
+                            updateSites(date, Number(e.target.value))
+                          }
+                          disabled={isSaving}
+                          className="border border-stone-200 rounded px-1.5 py-0.5 text-xs text-stone-700 focus:outline-none focus:ring-1 focus:ring-[#2D4030]"
+                        >
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <option key={n} value={n}>
+                              {n}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* 休業トグルボタン */}
+                    <button
+                      onClick={() => toggleClosed(date)}
+                      disabled={isSaving}
+                      className={`px-3 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50 ml-auto ${
+                        isClosed
+                          ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                          : "bg-red-100 text-red-700 hover:bg-red-200"
+                      }`}
+                    >
+                      {isSaving ? "..." : isClosed ? "休業解除" : "休業にする"}
+                    </button>
+                  </div>
                 </div>
               );
             })}
