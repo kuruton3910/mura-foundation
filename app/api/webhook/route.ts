@@ -64,6 +64,46 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // 空き状況を更新（booked_sites +1, available_sites -1）
+      if (reservation) {
+        const checkin = new Date(reservation.checkin_date);
+        const checkout = new Date(reservation.checkout_date);
+        const sites = reservation.vehicle_count || 1;
+
+        for (let d = new Date(checkin); d < checkout; d.setDate(d.getDate() + 1)) {
+          const dateStr = d.toISOString().split("T")[0];
+
+          const { data: existing } = await supabase
+            .from("daily_availability")
+            .select("booked_sites, available_sites, max_sites")
+            .eq("date", dateStr)
+            .single();
+
+          if (existing) {
+            // 既存の行を更新
+            await supabase
+              .from("daily_availability")
+              .update({
+                booked_sites: (existing.booked_sites ?? 0) + sites,
+                available_sites: Math.max(0, (existing.available_sites ?? existing.max_sites) - sites),
+              })
+              .eq("date", dateStr);
+          } else {
+            // 行がなければ作成（デフォルト max_sites = 5）
+            const maxSites = 5;
+            await supabase
+              .from("daily_availability")
+              .insert({
+                date: dateStr,
+                is_closed: false,
+                max_sites: maxSites,
+                booked_sites: sites,
+                available_sites: maxSites - sites,
+              });
+          }
+        }
+      }
+
       // 確認メール送信（失敗しても予約確定には影響させない）
       if (reservation) {
         try {
@@ -93,7 +133,7 @@ export async function POST(request: NextRequest) {
       break;
     }
 
-    // 決済失敗 / 有効期限切れ → pending のまま（キャンセルしない）
+    // 決済失敗 / 有効期限切れ → pending のものをキャンセル
     case "checkout.session.expired": {
       const session = event.data.object as Stripe.Checkout.Session;
       const reservationId = session.metadata?.reservation_id;
@@ -106,21 +146,56 @@ export async function POST(request: NextRequest) {
         .eq("id", reservationId)
         .eq("status", "pending"); // pending のものだけキャンセル
 
+      // pending → cancelled は枠を確保していないので戻す必要なし
       console.log(`Reservation expired/cancelled: ${reservationId}`);
       break;
     }
 
-    // 返金完了
+    // 返金完了 → 枠を戻す
     case "charge.refunded": {
       const charge = event.data.object as Stripe.Charge;
       const paymentIntentId = charge.payment_intent as string;
 
       if (!paymentIntentId) break;
 
+      // 返金対象の予約を取得（枠を戻すため）
+      const { data: refundedReservation } = await supabase
+        .from("reservations")
+        .select("*")
+        .eq("stripe_payment_intent_id", paymentIntentId)
+        .single();
+
       await supabase
         .from("reservations")
         .update({ status: "refunded" })
         .eq("stripe_payment_intent_id", paymentIntentId);
+
+      // 枠を戻す
+      if (refundedReservation) {
+        const checkin = new Date(refundedReservation.checkin_date);
+        const checkout = new Date(refundedReservation.checkout_date);
+        const sites = refundedReservation.vehicle_count || 1;
+
+        for (let d = new Date(checkin); d < checkout; d.setDate(d.getDate() + 1)) {
+          const dateStr = d.toISOString().split("T")[0];
+
+          const { data: existing } = await supabase
+            .from("daily_availability")
+            .select("booked_sites, available_sites, max_sites")
+            .eq("date", dateStr)
+            .single();
+
+          if (existing) {
+            await supabase
+              .from("daily_availability")
+              .update({
+                booked_sites: Math.max(0, (existing.booked_sites ?? 0) - sites),
+                available_sites: Math.min(existing.max_sites, (existing.available_sites ?? 0) + sites),
+              })
+              .eq("date", dateStr);
+          }
+        }
+      }
 
       console.log(`Reservation refunded: payment_intent ${paymentIntentId}`);
       break;
