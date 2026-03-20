@@ -137,26 +137,49 @@ export async function POST(request: NextRequest) {
 
     if (availError) throw availError;
 
-    // 貸し切りリクエストの場合: 全日程で全枠が空いている必要がある
-    if (isExclusive) {
-      const notAllFree = availability?.find(
-        (d) => d.is_closed || (d.booked_sites ?? 1) > 0,
-      );
-      if (notAllFree) {
-        return NextResponse.json(
-          { error: `${notAllFree.date} にすでに予約が入っているため、貸し切りリクエストはできません` },
-          { status: 409 },
-        );
-      }
-    } else {
-      const unavailable = availability?.find(
-        (d) => d.is_closed || (d.available_sites ?? Infinity) < body.vehicleCount,
-      );
-      if (unavailable) {
-        return NextResponse.json(
-          { error: `${unavailable.date} は空き区画が不足しています` },
-          { status: 409 },
-        );
+    // DBから取得したmax_sitesのデフォルト値（site_settingsにmax_sitesがあればそれを使用）
+    const defaultMaxSites = (settingsData as Record<string, unknown>)?.max_sites as number ?? 5;
+
+    // チェックイン〜チェックアウトの全日付を生成し、availability配列をマップに変換
+    const availMap = new Map<string, { available_sites: number | null; booked_sites: number | null; max_sites: number | null; is_closed: boolean }>();
+    for (const row of availability ?? []) {
+      availMap.set(row.date, row);
+    }
+
+    // 全日付をループして空き状況を確認（DBにレコードがない日はデフォルトmax_sitesを使用）
+    for (let d = new Date(checkin); d < checkout; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split("T")[0];
+      const row = availMap.get(dateStr);
+
+      if (isExclusive) {
+        // 貸し切りリクエストの場合: 全日程で全枠が空いている必要がある
+        if (row) {
+          if (row.is_closed || (row.booked_sites ?? 0) > 0) {
+            return NextResponse.json(
+              { error: `${dateStr} にすでに予約が入っているため、貸し切りリクエストはできません` },
+              { status: 409 },
+            );
+          }
+        }
+        // レコードがない日は予約ゼロなので貸し切り可能
+      } else {
+        // 通常予約の場合: 空き区画が足りているか確認
+        if (row) {
+          if (row.is_closed || (row.available_sites ?? (row.max_sites ?? defaultMaxSites)) < body.vehicleCount) {
+            return NextResponse.json(
+              { error: `${dateStr} は空き区画が不足しています` },
+              { status: 409 },
+            );
+          }
+        } else {
+          // レコードがない日はデフォルトmax_sitesが空き枠
+          if (defaultMaxSites < body.vehicleCount) {
+            return NextResponse.json(
+              { error: `${dateStr} は空き区画が不足しています` },
+              { status: 409 },
+            );
+          }
+        }
       }
     }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createServerClient } from "@/lib/supabase/server";
 import { sendConfirmationEmail } from "@/lib/email/send-confirmation";
+import { DEFAULT_SETTINGS } from "@/lib/booking/siteSettings";
 
 // Stripe は生のリクエストボディで署名検証するため Next.js のパース無効化
 export const runtime = "nodejs";
@@ -66,6 +67,14 @@ export async function POST(request: NextRequest) {
 
       // 空き状況を更新（booked_sites +1, available_sites -1）
       if (reservation) {
+        // site_settingsからmax_sitesを取得（カラムがなければデフォルト5を使用）
+        const { data: settingsData } = await supabase
+          .from("site_settings")
+          .select("*")
+          .eq("id", 1)
+          .single();
+        const defaultMaxSites = (settingsData as Record<string, unknown>)?.max_sites as number ?? 5;
+
         const checkin = new Date(reservation.checkin_date);
         const checkout = new Date(reservation.checkout_date);
         const sites = reservation.vehicle_count || 1;
@@ -89,16 +98,15 @@ export async function POST(request: NextRequest) {
               })
               .eq("date", dateStr);
           } else {
-            // 行がなければ作成（デフォルト max_sites = 5）
-            const maxSites = 5;
+            // 行がなければ作成（site_settingsのmax_sitesをデフォルト値として使用）
             await supabase
               .from("daily_availability")
               .insert({
                 date: dateStr,
                 is_closed: false,
-                max_sites: maxSites,
+                max_sites: defaultMaxSites,
                 booked_sites: sites,
-                available_sites: maxSites - sites,
+                available_sites: defaultMaxSites - sites,
               });
           }
         }

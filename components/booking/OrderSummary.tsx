@@ -94,11 +94,14 @@ export default function OrderSummary({
     setCouponError("");
     setCouponInfo(null);
 
+    // チェックイン・チェックアウト日を送信して正確な平日/週末料金で割引額を計算
     const params = new URLSearchParams({
       code,
       isMember: String(data.isMember),
       vehicleCount: String(data.vehicleCount),
       nights: String(nights),
+      ...(data.checkinDate ? { checkinDate: data.checkinDate.toISOString().split("T")[0] } : {}),
+      ...(data.checkoutDate ? { checkoutDate: data.checkoutDate.toISOString().split("T")[0] } : {}),
     });
 
     const res = await fetch(`/api/coupons/validate?${params}`);

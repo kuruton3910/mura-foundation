@@ -4,7 +4,12 @@ import { DEFAULT_SETTINGS } from "@/lib/booking/siteSettings";
 
 export async function GET() {
   try {
+    // 認証チェック
     const supabase = createServerClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+    }
     const { data } = await supabase
       .from("site_settings")
       .select("*")
@@ -18,8 +23,14 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const body = await request.json();
+    // 認証チェック
     const supabase = createServerClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+    }
+
+    const body = await request.json();
 
     const { data, error } = await supabase
       .from("site_settings")

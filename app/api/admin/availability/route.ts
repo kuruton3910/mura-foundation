@@ -17,9 +17,15 @@ function generateDateRange(from: string, to: string): string[] {
 // Bulk:    { from, to, is_closed, available_sites }
 export async function POST(request: NextRequest) {
   try {
+    // 認証チェック
+    const supabase = createServerClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { is_closed, available_sites, icon } = body;
-    const supabase = createServerClient();
 
     // --- 一括設定 ---
     if (body.from && body.to) {
@@ -63,8 +69,14 @@ export async function POST(request: NextRequest) {
 // Bulk:    { from, to }
 export async function DELETE(request: NextRequest) {
   try {
-    const body = await request.json();
+    // 認証チェック
     const supabase = createServerClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+    }
+
+    const body = await request.json();
 
     // --- 一括解除 ---
     if (body.from && body.to) {

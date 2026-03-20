@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import type { ReservationFormData } from "@/lib/booking/schema";
 import {
@@ -7,14 +8,49 @@ import {
   calcBreakdown,
   calcNights,
   formatDate,
+  type RentalOption,
+  type SiteFees,
+  type PersonFees,
+  DEFAULT_SITE_FEES,
+  DEFAULT_PERSON_FEES,
 } from "@/lib/booking/pricing";
+import { DEFAULT_SETTINGS } from "@/lib/booking/siteSettings";
 
 export default function StepPayment() {
   const { watch } = useFormContext<ReservationFormData>();
   const data = watch();
   const nights = calcNights(data.checkinDate, data.checkoutDate);
-  const total = calcTotal(data);
-  const breakdown = calcBreakdown(data);
+  const isExclusive = data.isExclusive ?? false;
+
+  const [options, setOptions] = useState<RentalOption[]>([]);
+  const [siteFees, setSiteFees] = useState<SiteFees>(DEFAULT_SITE_FEES);
+  const [personFees, setPersonFees] = useState<PersonFees>(DEFAULT_PERSON_FEES);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((s) => {
+        setSiteFees({
+          weekday: s.site_fee_weekday ?? DEFAULT_SETTINGS.site_fee_weekday,
+          weekend: s.site_fee_weekend ?? DEFAULT_SETTINGS.site_fee_weekend,
+        });
+        setPersonFees({
+          includedPersonsPerSite: s.included_persons_per_site ?? DEFAULT_SETTINGS.included_persons_per_site,
+          extraPersonFeePerNight: s.extra_person_fee_per_night ?? DEFAULT_SETTINGS.extra_person_fee_per_night,
+        });
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch(`/api/options?exclusive=${isExclusive}`)
+      .then((r) => r.json())
+      .then((d) => setOptions(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, [isExclusive]);
+
+  const total = calcTotal(data, options, siteFees, personFees);
+  const breakdown = calcBreakdown(data, options, siteFees, personFees);
 
   return (
     <div className="space-y-6">

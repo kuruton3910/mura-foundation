@@ -6,6 +6,13 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    // 認証チェック
+    const supabase = createServerClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+    }
+
     const { id } = await params;
     const { status } = await request.json();
 
@@ -17,7 +24,6 @@ export async function PATCH(
       );
     }
 
-    const supabase = createServerClient();
     const { error } = await supabase
       .from("reservations")
       .update({ status })

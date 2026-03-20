@@ -4,6 +4,13 @@ import { createServerClient } from "@/lib/supabase/server";
 // POST — create coupon
 export async function POST(request: NextRequest) {
   try {
+    // 認証チェック
+    const supabase = createServerClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+    }
+
     const body = await request.json();
 
     if (!body.code?.trim()) {
@@ -13,7 +20,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createServerClient();
     const { data: coupon, error } = await supabase
       .from("coupons")
       .insert({
@@ -54,13 +60,18 @@ export async function POST(request: NextRequest) {
 // PATCH — toggle is_active
 export async function PATCH(request: NextRequest) {
   try {
+    // 認証チェック
+    const supabase = createServerClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+    }
+
     const { id, is_active } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: "id が必要です" }, { status: 400 });
     }
-
-    const supabase = createServerClient();
     const { error } = await supabase
       .from("coupons")
       .update({ is_active })
@@ -78,13 +89,18 @@ export async function PATCH(request: NextRequest) {
 // DELETE — delete coupon
 export async function DELETE(request: NextRequest) {
   try {
+    // 認証チェック
+    const supabase = createServerClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+    }
+
     const { id } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: "id が必要です" }, { status: 400 });
     }
-
-    const supabase = createServerClient();
     const { error } = await supabase.from("coupons").delete().eq("id", id);
 
     if (error) throw error;

@@ -96,6 +96,7 @@ export default function Page() {
       if (!reservationRes.ok) {
         const { error: msg } = await reservationRes.json();
         setStepError(msg || "予約の作成に失敗しました");
+        window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
       const { reservationId } = await reservationRes.json();
@@ -109,12 +110,14 @@ export default function Page() {
       if (!checkoutRes.ok) {
         const { error: msg } = await checkoutRes.json();
         setStepError(msg || "決済セッションの作成に失敗しました");
+        window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
       const { checkoutUrl } = await checkoutRes.json();
       window.location.href = checkoutUrl;
     } catch {
       setStepError("通信エラーが発生しました。もう一度お試しください。");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setIsSubmitting(false);
     }
