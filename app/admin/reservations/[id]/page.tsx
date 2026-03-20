@@ -59,7 +59,8 @@ export default async function ReservationDetailPage({
         </span>
       </div>
 
-      <div className="space-y-4">
+      {/* 各セクション間の余白を統一 */}
+      <div className="space-y-6">
         {/* Guest info */}
         <section className="bg-white rounded-xl border border-stone-200 p-6">
           <h2 className="font-bold text-stone-700 mb-4 border-l-4 border-[#2D4030] pl-3">
@@ -127,11 +128,17 @@ export default async function ReservationDetailPage({
               label="合計金額"
               value={`¥${reservation.total_amount?.toLocaleString()}`}
             />
+            {/* Stripe IDは長いため truncate で省略表示し、hover で全文確認可能にする */}
             {reservation.stripe_session_id && (
-              <InfoRow
-                label="Stripe Session ID"
-                value={reservation.stripe_session_id}
-              />
+              <>
+                <dt className="text-stone-500">Stripe Session ID</dt>
+                <dd
+                  className="font-medium text-stone-800 truncate max-w-55"
+                  title={reservation.stripe_session_id}
+                >
+                  {reservation.stripe_session_id}
+                </dd>
+              </>
             )}
             {reservation.terms_agreed_at && (
               <InfoRow

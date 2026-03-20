@@ -64,10 +64,10 @@ export default async function AdminReservationsPage({
         ))}
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+      {/* テーブル: 小画面でも横スクロールで閲覧可能にする */}
+      <div className="bg-white rounded-xl border border-stone-200 overflow-x-auto">
         {filtered && filtered.length > 0 ? (
-          <table className="w-full text-sm">
+          <table className="w-full min-w-175 text-sm">
             <thead className="bg-stone-50 border-b border-stone-200">
               <tr className="text-left text-stone-500">
                 <th className="px-4 py-3 font-medium">予約者</th>

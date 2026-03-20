@@ -56,8 +56,8 @@ export default async function AdminDashboardPage() {
     <div className="p-8">
       <h1 className="text-2xl font-bold text-stone-800 mb-6">ダッシュボード</h1>
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+      {/* 統計カード: モバイルで1列、sm以上で2列、xl以上で4列 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         <StatCard
           label="本日チェックイン"
           value={`${todayCheckins?.length ?? 0} 件`}
@@ -79,7 +79,7 @@ export default async function AdminDashboardPage() {
         <StatCard
           label="決済待ち"
           value={`${pendingCount ?? 0} 件`}
-          sub="pending"
+          sub="未決済"
           color="bg-red-50 border-red-200"
         />
       </div>
@@ -117,32 +117,59 @@ export default async function AdminDashboardPage() {
       <section className="bg-white rounded-xl border border-stone-200 p-6">
         <h2 className="font-bold text-stone-700 mb-4">直近7日以内の予約</h2>
         {upcoming && upcoming.length > 0 ? (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-stone-500 border-b border-stone-100">
-                <th className="pb-2 font-medium">氏名</th>
-                <th className="pb-2 font-medium">チェックイン</th>
-                <th className="pb-2 font-medium">チェックアウト</th>
-                <th className="pb-2 font-medium">区画</th>
-                <th className="pb-2 font-medium text-right">金額</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* デスクトップ: テーブル表示（横スクロール対応） */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-sm min-w-135">
+                <thead>
+                  <tr className="text-left text-stone-500 border-b border-stone-100">
+                    <th className="pb-2 font-medium">氏名</th>
+                    <th className="pb-2 font-medium">チェックイン</th>
+                    <th className="pb-2 font-medium">チェックアウト</th>
+                    <th className="pb-2 font-medium">区画</th>
+                    <th className="pb-2 font-medium text-right">金額</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {upcoming.map((r) => (
+                    <tr key={r.id} className="border-b border-stone-50">
+                      <td className="py-2 font-medium text-stone-800">
+                        {r.guest_name}
+                      </td>
+                      <td className="py-2 text-stone-600">{r.checkin_date}</td>
+                      <td className="py-2 text-stone-600">{r.checkout_date}</td>
+                      <td className="py-2 text-stone-600">{r.vehicle_count}区画</td>
+                      <td className="py-2 text-right font-medium">
+                        ¥{r.total_amount?.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* モバイル: カード形式で表示 */}
+            <div className="sm:hidden space-y-3">
               {upcoming.map((r) => (
-                <tr key={r.id} className="border-b border-stone-50">
-                  <td className="py-2 font-medium text-stone-800">
-                    {r.guest_name}
-                  </td>
-                  <td className="py-2 text-stone-600">{r.checkin_date}</td>
-                  <td className="py-2 text-stone-600">{r.checkout_date}</td>
-                  <td className="py-2 text-stone-600">{r.vehicle_count}区画</td>
-                  <td className="py-2 text-right font-medium">
-                    ¥{r.total_amount?.toLocaleString()}
-                  </td>
-                </tr>
+                <div
+                  key={r.id}
+                  className="rounded-lg border border-stone-100 p-3 space-y-1"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-stone-800">
+                      {r.guest_name}
+                    </span>
+                    <span className="font-medium text-stone-800">
+                      ¥{r.total_amount?.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="text-xs text-stone-500">
+                    {r.checkin_date} → {r.checkout_date}　/　{r.vehicle_count}区画
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         ) : (
           <p className="text-stone-400 text-sm">直近の予約はありません。</p>
         )}
