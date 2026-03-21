@@ -35,8 +35,12 @@ export default function StepPayment() {
           weekend: s.site_fee_weekend ?? DEFAULT_SETTINGS.site_fee_weekend,
         });
         setPersonFees({
-          includedPersonsPerSite: s.included_persons_per_site ?? DEFAULT_SETTINGS.included_persons_per_site,
-          extraPersonFeePerNight: s.extra_person_fee_per_night ?? DEFAULT_SETTINGS.extra_person_fee_per_night,
+          includedPersonsPerSite:
+            s.included_persons_per_site ??
+            DEFAULT_SETTINGS.included_persons_per_site,
+          extraPersonFeePerNight:
+            s.extra_person_fee_per_night ??
+            DEFAULT_SETTINGS.extra_person_fee_per_night,
         });
       })
       .catch(() => {});
@@ -90,23 +94,6 @@ export default function StepPayment() {
               {data.pets > 0 ? ` / ペット ${data.pets}匹` : ""}
             </span>
           </div>
-
-          {breakdown.length > 0 && (
-            <div className="bg-stone-50 p-4 rounded-lg space-y-2">
-              {breakdown.map((item, i) => (
-                <div key={i} className="flex justify-between">
-                  <span className="text-gray-600">{item.label}</span>
-                  <span>¥{item.amount.toLocaleString()}</span>
-                </div>
-              ))}
-              <div className="border-t pt-2 flex justify-between font-bold text-base">
-                <span>合計 (税込)</span>
-                <span className="text-[#2D4030]">
-                  ¥{total.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          )}
         </div>
       </section>
 
