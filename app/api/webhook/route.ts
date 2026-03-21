@@ -7,6 +7,19 @@ import { DEFAULT_SETTINGS } from "@/lib/booking/siteSettings";
 // Stripe は生のリクエストボディで署名検証するため Next.js のパース無効化
 export const runtime = "nodejs";
 
+// YYYY-MM-DD文字列のまま日付を1日ずつ進める（タイムゾーンずれ防止）
+function getDateRange(checkin: string, checkout: string): string[] {
+  const dates: string[] = [];
+  let cur = checkin;
+  while (cur < checkout) {
+    dates.push(cur);
+    const [y, m, d] = cur.split("-").map(Number);
+    const next = new Date(Date.UTC(y, m - 1, d + 1));
+    cur = next.toISOString().split("T")[0];
+  }
+  return dates;
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.text();
   const sig = request.headers.get("stripe-signature");
@@ -75,13 +88,11 @@ export async function POST(request: NextRequest) {
           .single();
         const defaultMaxSites = (settingsData as Record<string, unknown>)?.max_sites as number ?? 5;
 
-        const checkin = new Date(reservation.checkin_date);
-        const checkout = new Date(reservation.checkout_date);
+        // YYYY-MM-DD文字列のまま日付を進める（タイムゾーンずれ防止）
+        const stayDates = getDateRange(reservation.checkin_date, reservation.checkout_date);
         const sites = reservation.vehicle_count || 1;
 
-        for (let d = new Date(checkin); d < checkout; d.setDate(d.getDate() + 1)) {
-          const dateStr = d.toISOString().split("T")[0];
-
+        for (const dateStr of stayDates) {
           const { data: existing } = await supabase
             .from("daily_availability")
             .select("booked_sites, available_sites, max_sites")
@@ -89,7 +100,6 @@ export async function POST(request: NextRequest) {
             .single();
 
           if (existing) {
-            // 既存の行を更新
             await supabase
               .from("daily_availability")
               .update({
@@ -98,7 +108,6 @@ export async function POST(request: NextRequest) {
               })
               .eq("date", dateStr);
           } else {
-            // 行がなければ作成（site_settingsのmax_sitesをデフォルト値として使用）
             await supabase
               .from("daily_availability")
               .insert({
@@ -180,12 +189,10 @@ export async function POST(request: NextRequest) {
 
       // 枠を戻す
       if (refundedReservation) {
-        const checkin = new Date(refundedReservation.checkin_date);
-        const checkout = new Date(refundedReservation.checkout_date);
+        const refundDates = getDateRange(refundedReservation.checkin_date, refundedReservation.checkout_date);
         const sites = refundedReservation.vehicle_count || 1;
 
-        for (let d = new Date(checkin); d < checkout; d.setDate(d.getDate() + 1)) {
-          const dateStr = d.toISOString().split("T")[0];
+        for (const dateStr of refundDates) {
 
           const { data: existing } = await supabase
             .from("daily_availability")

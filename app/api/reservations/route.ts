@@ -125,9 +125,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 空き状況の確認
-    const checkinStr = checkin.toISOString().split("T")[0];
-    const checkoutStr = checkout.toISOString().split("T")[0];
+    // 空き状況の確認（YYYY-MM-DD文字列で処理、タイムゾーンずれ防止）
+    const checkinStr = (body.checkinDate as unknown as string).split("T")[0];
+    const checkoutStr = (body.checkoutDate as unknown as string).split("T")[0];
 
     const { data: availability, error: availError } = await supabase
       .from("daily_availability")
@@ -146,9 +146,10 @@ export async function POST(request: NextRequest) {
       availMap.set(row.date, row);
     }
 
-    // 全日付をループして空き状況を確認（DBにレコードがない日はデフォルトmax_sitesを使用）
-    for (let d = new Date(checkin); d < checkout; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split("T")[0];
+    // 全日付をループして空き状況を確認（YYYY-MM-DD文字列で処理、タイムゾーンずれ防止）
+    let curDate = checkinStr;
+    while (curDate < checkoutStr) {
+      const dateStr = curDate;
       const row = availMap.get(dateStr);
 
       if (isExclusive) {
@@ -181,6 +182,10 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+      // 次の日へ（YYYY-MM-DD文字列で進める）
+      const [y, m, day] = curDate.split("-").map(Number);
+      const next = new Date(Date.UTC(y, m - 1, day + 1));
+      curDate = next.toISOString().split("T")[0];
     }
 
     // 合計金額の計算（サーバー側で再計算してフロントの改ざん防止）
