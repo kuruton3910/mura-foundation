@@ -10,18 +10,29 @@ export async function POST(request: NextRequest) {
     const body: ReservationFormData & { couponCode?: string } =
       await request.json();
 
-    // 日付の検証
-    const checkin = new Date(body.checkinDate as unknown as string);
-    const checkout = new Date(body.checkoutDate as unknown as string);
+    // 日付の検証（YYYY-MM-DD文字列で処理し、タイムゾーンずれを防止）
+    const checkinRaw = (body.checkinDate as unknown as string).split("T")[0];
+    const checkoutRaw = (body.checkoutDate as unknown as string).split("T")[0];
 
-    if (!checkin || !checkout || checkout <= checkin) {
+    if (!checkinRaw || !checkoutRaw || !/^\d{4}-\d{2}-\d{2}$/.test(checkinRaw) || !/^\d{4}-\d{2}-\d{2}$/.test(checkoutRaw)) {
       return NextResponse.json({ error: "日付が無効です" }, { status: 400 });
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // UTCで日付オブジェクトを作成（比較・計算用）
+    const [cy, cm, cd] = checkinRaw.split("-").map(Number);
+    const [oy, om, od] = checkoutRaw.split("-").map(Number);
+    const checkin = new Date(Date.UTC(cy, cm - 1, cd));
+    const checkout = new Date(Date.UTC(oy, om - 1, od));
 
-    if (checkin < today) {
+    if (checkout <= checkin) {
+      return NextResponse.json({ error: "日付が無効です" }, { status: 400 });
+    }
+
+    // 今日の日付もUTCベースで統一（日本時間での「今日」を使用）
+    const nowJST = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const todayUTC = new Date(Date.UTC(nowJST.getUTCFullYear(), nowJST.getUTCMonth(), nowJST.getUTCDate()));
+
+    if (checkin < todayUTC) {
       return NextResponse.json(
         { error: "過去の日付は予約できません" },
         { status: 400 },
@@ -63,8 +74,8 @@ export async function POST(request: NextRequest) {
     const maxDays = body.isMember
       ? settings.booking_window_member_days
       : settings.booking_window_days;
-    const maxDate = new Date(today);
-    maxDate.setDate(maxDate.getDate() + maxDays);
+    const maxDate = new Date(todayUTC);
+    maxDate.setUTCDate(maxDate.getUTCDate() + maxDays);
 
     if (checkin > maxDate) {
       return NextResponse.json(
@@ -75,22 +86,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── シーズン制限 ─────────────────────────────────────────────────
-    const seasonOpen = new Date(
-      checkin.getFullYear(),
-      settings.season_open_month - 1,
-      settings.season_open_day,
-    );
-    const seasonClose = new Date(
-      checkin.getFullYear(),
-      settings.season_close_month - 1,
-      settings.season_close_day,
-    );
-    const memberClose = new Date(
-      checkin.getFullYear(),
-      settings.member_close_month - 1,
-      settings.member_close_day,
-    );
+    // ── シーズン制限（UTCベースで比較）────────────────────────────────
+    const seasonOpen = new Date(Date.UTC(
+      cy, settings.season_open_month - 1, settings.season_open_day,
+    ));
+    const seasonClose = new Date(Date.UTC(
+      cy, settings.season_close_month - 1, settings.season_close_day,
+    ));
+    const memberClose = new Date(Date.UTC(
+      cy, settings.member_close_month - 1, settings.member_close_day,
+    ));
 
     if (checkin < seasonOpen) {
       return NextResponse.json(
@@ -125,9 +130,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 空き状況の確認（YYYY-MM-DD文字列で処理、タイムゾーンずれ防止）
-    const checkinStr = (body.checkinDate as unknown as string).split("T")[0];
-    const checkoutStr = (body.checkoutDate as unknown as string).split("T")[0];
+    // 空き状況の確認
+    const checkinStr = checkinRaw;
+    const checkoutStr = checkoutRaw;
 
     const { data: availability, error: availError } = await supabase
       .from("daily_availability")
@@ -225,11 +230,25 @@ export async function POST(request: NextRequest) {
           );
           appliedCouponCode = couponCode;
 
-          // used_count をインクリメント
-          await supabase
-            .from("coupons")
-            .update({ used_count: coupon.used_count + 1 })
-            .eq("id", coupon.id);
+          // used_count をアトミックにインクリメント（同時使用での上限超過を防止）
+          const { error: updateErr } = await supabase.rpc("increment_coupon_usage", {
+            coupon_id: coupon.id,
+          });
+          // RPCがない場合のフォールバック（条件付きUPDATE）
+          if (updateErr) {
+            const { data: updated } = await supabase
+              .from("coupons")
+              .update({ used_count: coupon.used_count + 1 })
+              .eq("id", coupon.id)
+              .eq("used_count", coupon.used_count)
+              .select("id")
+              .single();
+            if (!updated) {
+              // 別の予約が先にクーポンを使用した → 割引なしで続行
+              discountAmount = 0;
+              appliedCouponCode = null;
+            }
+          }
         }
       }
     }

@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
         );
       }
       return NextResponse.json(
-        { error: `DB エラー: ${error.message}` },
+        { error: "クーポンの作成に失敗しました" },
         { status: 500 },
       );
     }
