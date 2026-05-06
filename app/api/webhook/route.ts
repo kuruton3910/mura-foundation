@@ -131,6 +131,7 @@ export async function POST(request: NextRequest) {
             checkinDate: reservation.checkin_date,
             checkoutDate: reservation.checkout_date,
             vehicleCount: reservation.vehicle_count,
+            vehiclePlate: reservation.vehicle_plate ?? undefined,
             adults: reservation.adults,
             children: reservation.children,
             pets: reservation.pets,

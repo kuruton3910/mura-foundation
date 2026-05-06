@@ -19,6 +19,7 @@ export type Reservation = {
   guest_name: string;
   guest_email: string;
   guest_phone: string;
+  vehicle_plate: string;
   notes: string;
   is_member: boolean;
   checkin_date: string; // YYYY-MM-DD

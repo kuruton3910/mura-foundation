@@ -14,6 +14,7 @@ import StepConditions from "@/components/booking/StepConditions";
 import StepTerms from "@/components/booking/StepTerms";
 import StepPersonalInfo from "@/components/booking/StepPersonalInfo";
 import StepPayment from "@/components/booking/StepPayment";
+import { toDateStr } from "@/lib/booking/pricing";
 
 function validateStep1(data: ReservationFormData): string | null {
   if (!data.checkinDate) return "チェックイン日を選択してください。";
@@ -87,11 +88,19 @@ export default function Page() {
     setIsSubmitting(true);
 
     try {
+      // 日付はローカルTZ基準のYYYY-MM-DD文字列に変換してから送信
+      // （Date.toISOString()はUTC変換され、JST midnightだと前日にずれるため）
+      const payload = {
+        ...data,
+        checkinDate: data.checkinDate ? toDateStr(data.checkinDate) : null,
+        checkoutDate: data.checkoutDate ? toDateStr(data.checkoutDate) : null,
+      };
+
       // 1. pending 予約を作成
       const reservationRes = await fetch("/api/reservations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       if (!reservationRes.ok) {
         const { error: msg } = await reservationRes.json();

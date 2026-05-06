@@ -32,9 +32,17 @@ export type RentalOption = {
   is_exclusive_only?: boolean;
 };
 
-/** 金曜・土曜始まりの夜はウィークエンド料金 */
+/** 金曜・土曜始まりの夜はウィークエンド料金（ローカルTZ基準、カレンダー表示用） */
 export function isWeekendNight(d: Date): boolean {
-  const dow = d.getDay(); // 0=Sun, 5=Fri, 6=Sat
+  const dow = d.getDay(); // ローカルTZ: 0=Sun, 5=Fri, 6=Sat
+  return dow === 5 || dow === 6;
+}
+
+/** 金曜・土曜始まりの夜はウィークエンド料金（YYYY-MM-DD文字列基準、サーバー計算用） */
+export function isWeekendNightUTC(dateStr: string): boolean {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const dow = date.getUTCDay();
   return dow === 5 || dow === 6;
 }
 
@@ -49,15 +57,15 @@ export function calcNights(
 
 /**
  * 大人換算人数を計算する
- * 子どもとペットは合算して 2 人で大人 1 名とカウント
- * 例: 大人2 + 子ども1 + ペット1 → 2 + ceil(2/2) = 3
+ * 子どもとペットは合算して 2 人で大人 1 名とカウント（端数は0.5として保持）
+ * 例: 大人3 + 子ども1 → 3 + 0.5 = 3.5（追加0.5人分 = ¥750）
  */
 export function calcAdultEquivalents(
   adults: number,
   children: number,
   pets: number,
 ): number {
-  return adults + Math.ceil((children + pets) / 2);
+  return adults + (children + pets) / 2;
 }
 
 /** クーポン割引の対象となる区画料のみを計算 */
@@ -66,14 +74,30 @@ export function calcSiteFee(
   siteFees: SiteFees = DEFAULT_SITE_FEES,
 ): number {
   if (!data.checkinDate || !data.checkoutDate) return 0;
+
+  // YYYY-MM-DD文字列ベースで日付ループ（タイムゾーンずれ完全防止）
+  const checkinStr = toDateStr(data.checkinDate);
+  const checkoutStr = toDateStr(data.checkoutDate);
+
   let total = 0;
-  const cur = new Date(data.checkinDate);
-  while (cur < data.checkoutDate) {
-    const fee = isWeekendNight(cur) ? siteFees.weekend : siteFees.weekday;
+  let curStr = checkinStr;
+  while (curStr < checkoutStr) {
+    const fee = isWeekendNightUTC(curStr) ? siteFees.weekend : siteFees.weekday;
     total += data.vehicleCount * fee;
-    cur.setDate(cur.getDate() + 1);
+    // 次の日へ
+    const [y, m, d] = curStr.split("-").map(Number);
+    const next = new Date(Date.UTC(y, m - 1, d + 1));
+    curStr = next.toISOString().split("T")[0];
   }
   return total;
+}
+
+/** Date → YYYY-MM-DD文字列（ローカルTZ基準） */
+export function toDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 /**
@@ -89,7 +113,7 @@ export function calcExtraPersonFee(
   const equiv = calcAdultEquivalents(data.adults, data.children, data.pets);
   const included = data.vehicleCount * personFees.includedPersonsPerSite;
   const extra = Math.max(0, equiv - included);
-  return extra * personFees.extraPersonFeePerNight * nights;
+  return Math.floor(extra * personFees.extraPersonFeePerNight * nights);
 }
 
 export function calcOptionsFee(
@@ -118,16 +142,23 @@ export function calcTotal(
   return siteFee + extraPersonFee + optFee;
 }
 
+export type BreakdownItem = {
+  label: string;
+  amount: number;
+  /** 補助行（インデント表示用） */
+  detail?: string[];
+};
+
 export function calcBreakdown(
   data: ReservationFormData,
   options: RentalOption[] = [],
   siteFees: SiteFees = DEFAULT_SITE_FEES,
   personFees: PersonFees = DEFAULT_PERSON_FEES,
-): { label: string; amount: number }[] {
+): BreakdownItem[] {
   const nights = calcNights(data.checkinDate, data.checkoutDate);
   if (nights === 0) return [];
 
-  const items: { label: string; amount: number }[] = [];
+  const items: BreakdownItem[] = [];
   const included = personFees.includedPersonsPerSite;
 
   const siteFee = calcSiteFee(data, siteFees);
@@ -140,9 +171,22 @@ export function calcBreakdown(
   const totalIncluded = data.vehicleCount * included;
   const extra = Math.max(0, equiv - totalIncluded);
   if (extra > 0) {
+    // 追加人数の根拠を可視化
+    const detail: string[] = [];
+    detail.push(`大人 ${data.adults}名`);
+    if (data.children > 0) {
+      detail.push(`子ども ${data.children}名（${data.children / 2}名換算）`);
+    }
+    if (data.pets > 0) {
+      detail.push(`ペット ${data.pets}匹（${data.pets / 2}名換算）`);
+    }
+    detail.push(`合計 ${equiv}名 − 含 ${totalIncluded}名 = 追加 ${extra}名`);
+    detail.push(`@¥${personFees.extraPersonFeePerNight.toLocaleString()}/名/泊 × ${nights}泊`);
+
     items.push({
       label: `追加人数 ${extra}名分 × ${nights}泊`,
-      amount: extra * personFees.extraPersonFeePerNight * nights,
+      amount: Math.floor(extra * personFees.extraPersonFeePerNight * nights),
+      detail,
     });
   }
 

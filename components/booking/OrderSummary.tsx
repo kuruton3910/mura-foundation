@@ -9,6 +9,7 @@ import {
   calcBreakdown,
   calcNights,
   formatDate,
+  toDateStr,
   type RentalOption,
   type SiteFees,
   type PersonFees,
@@ -100,8 +101,8 @@ export default function OrderSummary({
       isMember: String(data.isMember),
       vehicleCount: String(data.vehicleCount),
       nights: String(nights),
-      ...(data.checkinDate ? { checkinDate: data.checkinDate.toISOString().split("T")[0] } : {}),
-      ...(data.checkoutDate ? { checkoutDate: data.checkoutDate.toISOString().split("T")[0] } : {}),
+      ...(data.checkinDate ? { checkinDate: toDateStr(data.checkinDate) } : {}),
+      ...(data.checkoutDate ? { checkoutDate: toDateStr(data.checkoutDate) } : {}),
     });
 
     const res = await fetch(`/api/coupons/validate?${params}`);
@@ -183,9 +184,18 @@ export default function OrderSummary({
           {breakdown.length > 0 ? (
             <div className="space-y-2 text-sm">
               {breakdown.map((item, i) => (
-                <div key={i} className="flex justify-between">
-                  <span className="text-gray-600">{item.label}</span>
-                  <span>¥{item.amount.toLocaleString()}</span>
+                <div key={i} className="space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">{item.label}</span>
+                    <span>¥{item.amount.toLocaleString()}</span>
+                  </div>
+                  {item.detail && item.detail.length > 0 && (
+                    <ul className="ml-3 pl-2 border-l-2 border-stone-200 text-[11px] text-gray-500 space-y-0.5">
+                      {item.detail.map((d, j) => (
+                        <li key={j}>{d}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               ))}
               {couponInfo && (
@@ -260,6 +270,9 @@ export default function OrderSummary({
               </li>
               <li>
                 <strong>20:00〜5:00は車の出入り禁止</strong>
+              </li>
+              <li>
+                <strong>子ども料金は6〜17歳が対象</strong>
               </li>
             </ul>
           </div>

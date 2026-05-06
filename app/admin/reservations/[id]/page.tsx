@@ -74,6 +74,10 @@ export default async function ReservationDetailPage({
               label="会員"
               value={reservation.is_member ? "NAKAMA会員" : "一般"}
             />
+            <InfoRow
+              label="車のナンバー"
+              value={reservation.vehicle_plate || "未入力"}
+            />
           </dl>
           {reservation.notes && (
             <div className="mt-4 p-3 bg-stone-50 rounded-lg text-sm text-stone-600">

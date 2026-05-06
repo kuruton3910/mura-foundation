@@ -140,6 +140,13 @@ function BookingCompleteContent() {
             <span className="text-gray-500">区画数</span>
             <span className="font-bold">{reservation.vehicle_count}区画</span>
 
+            {reservation.vehicle_plate && (
+              <>
+                <span className="text-gray-500">車のナンバー</span>
+                <span className="font-bold">{reservation.vehicle_plate}</span>
+              </>
+            )}
+
             <span className="text-gray-500">人数</span>
             <span className="font-bold">
               大人 {reservation.adults}名

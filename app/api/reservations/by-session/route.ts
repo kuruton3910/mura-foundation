@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase
     .from("reservations")
     .select(
-      "id, guest_name, guest_email, checkin_date, checkout_date, vehicle_count, adults, children, pets, total_amount, discount_amount, coupon_code, selected_options, status, is_exclusive"
+      "id, guest_name, guest_email, checkin_date, checkout_date, vehicle_count, adults, children, pets, vehicle_plate, total_amount, discount_amount, coupon_code, selected_options, status, is_exclusive"
     )
     .eq("stripe_session_id", sessionId)
     .single();

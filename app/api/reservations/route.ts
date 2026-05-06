@@ -275,6 +275,7 @@ export async function POST(request: NextRequest) {
         guest_name: body.guestName.trim(),
         guest_email: body.guestEmail.trim().toLowerCase(),
         guest_phone: body.guestPhone.trim(),
+        vehicle_plate: (body.vehiclePlate || "").trim(),
         notes: body.notes || "",
         is_member: body.isMember,
         checkin_date: checkinStr,

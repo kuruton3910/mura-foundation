@@ -16,6 +16,7 @@ type ConfirmationEmailParams = {
   checkinDate: string;
   checkoutDate: string;
   vehicleCount: number;
+  vehiclePlate?: string;
   adults: number;
   children: number;
   pets: number;
@@ -86,6 +87,7 @@ export async function sendConfirmationEmail(
         <div class="row"><span class="label">チェックイン</span><span class="value">${params.checkinDate}（11:00〜17:00）</span></div>
         <div class="row"><span class="label">チェックアウト</span><span class="value">${params.checkoutDate}（〜11:00）</span></div>
         <div class="row"><span class="label">区画数</span><span class="value">${params.vehicleCount}区画</span></div>
+        ${params.vehiclePlate ? `<div class="row"><span class="label">車のナンバー</span><span class="value">${params.vehiclePlate}</span></div>` : ""}
         <div class="row"><span class="label">人数</span><span class="value">大人${params.adults}名${params.children > 0 ? ` / 子供${params.children}名` : ""}${params.pets > 0 ? ` / ペット${params.pets}匹` : ""}</span></div>
         ${params.selectedOptions && params.selectedOptions.length > 0
           ? params.selectedOptions.map(opt =>

@@ -96,6 +96,23 @@ export default function StepPersonalInfo({ error }: { error?: string }) {
             )}
           </div>
 
+          {/* Vehicle plate */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              車のナンバー{" "}
+              <span className="text-gray-400 font-normal">(任意)</span>
+            </label>
+            <input
+              type="text"
+              placeholder="例：品川 300 あ 12-34"
+              className="w-full border-2 border-gray-200 rounded-lg p-3 outline-none focus:border-[#2D4030] transition-colors"
+              {...register("vehiclePlate")}
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              場内管理のため、ご来場される車のナンバーをご入力ください。
+            </p>
+          </div>
+
           {/* Notes */}
           <div>
             <label className="block text-sm font-bold mb-2">

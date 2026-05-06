@@ -67,14 +67,14 @@ export function GuestCountSelector() {
       <label className="block font-bold mb-2">人数内訳</label>
       <CounterRow
         label="大人"
-        sublabel="中学生以上"
+        sublabel="18歳以上"
         field="adults"
         min={1}
         max={20}
       />
       <CounterRow
         label="子ども"
-        sublabel="小学生以下"
+        sublabel="6〜17歳"
         field="children"
         min={0}
         max={20}
