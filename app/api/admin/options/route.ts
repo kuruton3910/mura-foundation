@@ -4,12 +4,8 @@ import { createServerClient } from "@/lib/supabase/server";
 // GET /api/admin/options — 全オプション一覧（管理者）
 export async function GET() {
   try {
-    // 認証チェック
+    // 認証は middleware.ts で実施済み
     const supabase = createServerClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
-    }
     const { data, error } = await supabase
       .from("rental_options")
       .select("*")
@@ -24,12 +20,8 @@ export async function GET() {
 // POST /api/admin/options — 作成 or 更新（id あれば更新）
 export async function POST(request: NextRequest) {
   try {
-    // 認証チェック
+    // 認証は middleware.ts で実施済み
     const supabase = createServerClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
-    }
 
     const body = await request.json();
 
@@ -78,12 +70,8 @@ export async function POST(request: NextRequest) {
 // DELETE /api/admin/options — 削除 { id }
 export async function DELETE(request: NextRequest) {
   try {
-    // 認証チェック
+    // 認証は middleware.ts で実施済み
     const supabase = createServerClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
-    }
 
     const { id } = await request.json();
     if (!id) {

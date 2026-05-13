@@ -34,6 +34,13 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getSession();
 
   if (!session) {
+    // API ルートはJSONで401を返し、ページはログイン画面へリダイレクト
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { error: "認証が必要です" },
+        { status: 401 },
+      );
+    }
     const loginUrl = new URL("/admin/login", request.url);
     return NextResponse.redirect(loginUrl);
   }
@@ -42,5 +49,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/api/admin/:path*"],
 };

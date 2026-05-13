@@ -17,12 +17,8 @@ function generateDateRange(from: string, to: string): string[] {
 // Bulk:    { from, to, is_closed, available_sites }
 export async function POST(request: NextRequest) {
   try {
-    // 認証チェック
+    // 認証は middleware.ts で実施済み
     const supabase = createServerClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
-    }
 
     const body = await request.json();
     const { is_closed, available_sites, icon } = body;
@@ -69,12 +65,8 @@ export async function POST(request: NextRequest) {
 // Bulk:    { from, to }
 export async function DELETE(request: NextRequest) {
   try {
-    // 認証チェック
+    // 認証は middleware.ts で実施済み
     const supabase = createServerClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
-    }
 
     const body = await request.json();
 

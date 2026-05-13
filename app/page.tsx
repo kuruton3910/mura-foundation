@@ -38,6 +38,8 @@ function validateStep3(data: ReservationFormData): string | null {
   const phoneRe = /^[\d\-+() ]{10,}$/;
   if (!phoneRe.test(data.guestPhone.replace(/\s/g, "")))
     return "有効な電話番号を入力してください（10桁以上）。";
+  if (!/^\d{4}$/.test(data.vehiclePlate))
+    return "車のナンバー下4桁を半角数字で入力してください。";
   return null;
 }
 

@@ -14,7 +14,7 @@ export const reservationSchema = z.object({
   guestName: z.string(),
   guestEmail: z.string(),
   guestPhone: z.string(),
-  vehiclePlate: z.string(),
+  vehiclePlate: z.string().regex(/^\d{4}$/, "車のナンバー下4桁を半角数字で入力してください"),
   notes: z.string(),
   couponCode: z.string(),
   isExclusive: z.boolean(),

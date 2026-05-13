@@ -269,7 +269,7 @@ export default function ReservationCalendar() {
         cell: "bg-emerald-100 p-2 h-20 flex flex-col items-center cursor-pointer",
         text: "text-[#2D4030]",
         price: priceLabel,
-        priceCls: `text-[9px] leading-none mt-0.5 ${isWeekend ? "text-amber-600" : "text-stone-500"}`,
+        priceCls: `text-[9px] leading-none mt-0.5 ${isWeekend ? "text-rose-600" : "text-stone-500"}`,
         badge: `残${spots}`,
         badgeCls: `text-[10px] mt-0.5 ${badgeColor}`,
       };
@@ -279,10 +279,10 @@ export default function ReservationCalendar() {
       case "available": {
         const badgeColor = (spots ?? 0) <= LOW_SPOTS_THRESHOLD ? "text-red-500 font-bold" : "text-[#2D4030]";
         return {
-          cell: `${isWeekend ? "bg-orange-50 hover:bg-orange-100" : "bg-white hover:bg-green-50"} p-2 h-20 flex flex-col items-center cursor-pointer border-2 border-transparent hover:border-[#2D4030] transition-all`,
-          text: "",
+          cell: `${isWeekend ? "bg-rose-50 hover:bg-rose-100" : "bg-white hover:bg-green-50"} p-2 h-20 flex flex-col items-center cursor-pointer border-2 border-transparent hover:border-[#2D4030] transition-all`,
+          text: isWeekend ? "text-rose-700" : "",
           price: priceLabel,
-          priceCls: `text-[9px] leading-none mt-0.5 font-medium ${isWeekend ? "text-amber-500" : "text-stone-400"}`,
+          priceCls: `text-[9px] leading-none mt-0.5 font-medium ${isWeekend ? "text-rose-500" : "text-stone-400"}`,
           badge: `残${spots}`,
           badgeCls: `text-[10px] mt-0.5 ${badgeColor}`,
         };
@@ -487,8 +487,8 @@ export default function ReservationCalendar() {
           平日 <span className="text-stone-500">¥{settings.site_fee_weekday.toLocaleString()}</span>
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 bg-orange-50 border border-orange-200 rounded inline-block" />{" "}
-          週末 <span className="text-amber-500 font-medium">¥{settings.site_fee_weekend.toLocaleString()}</span>
+          <span className="w-3 h-3 bg-rose-50 border border-rose-200 rounded inline-block" />{" "}
+          週末・祝日 <span className="text-rose-500 font-medium">¥{settings.site_fee_weekend.toLocaleString()}</span>
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 bg-amber-50 border border-amber-200 rounded inline-block" />{" "}

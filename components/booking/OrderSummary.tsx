@@ -219,7 +219,7 @@ export default function OrderSummary({
           {currentStep >= 3 && (
             <div className="space-y-2">
               <p className="text-xs font-medium text-stone-600">
-                クーポンコード（NAKAMAメンバー）
+                クーポンコード
               </p>
               {couponInfo ? (
                 <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700 flex items-center justify-between">

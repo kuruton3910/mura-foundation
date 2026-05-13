@@ -1,4 +1,5 @@
 import type { ReservationFormData } from "./schema";
+import * as holiday_jp from "@holiday-jp/holiday_jp";
 
 export type SiteFees = {
   weekday: number;
@@ -32,18 +33,21 @@ export type RentalOption = {
   is_exclusive_only?: boolean;
 };
 
-/** 金曜・土曜始まりの夜はウィークエンド料金（ローカルTZ基準、カレンダー表示用） */
+/** 週末料金扱いの夜か判定：金・土・日・祝日（ローカルTZ基準、カレンダー表示用） */
 export function isWeekendNight(d: Date): boolean {
   const dow = d.getDay(); // ローカルTZ: 0=Sun, 5=Fri, 6=Sat
-  return dow === 5 || dow === 6;
+  if (dow === 0 || dow === 5 || dow === 6) return true;
+  return holiday_jp.isHoliday(d);
 }
 
-/** 金曜・土曜始まりの夜はウィークエンド料金（YYYY-MM-DD文字列基準、サーバー計算用） */
+/** 週末料金扱いの夜か判定：金・土・日・祝日（YYYY-MM-DD文字列基準、サーバー計算用） */
 export function isWeekendNightUTC(dateStr: string): boolean {
   const [y, m, d] = dateStr.split("-").map(Number);
-  const date = new Date(Date.UTC(y, m - 1, d));
-  const dow = date.getUTCDay();
-  return dow === 5 || dow === 6;
+  const dateUTC = new Date(Date.UTC(y, m - 1, d));
+  const dow = dateUTC.getUTCDay();
+  if (dow === 0 || dow === 5 || dow === 6) return true;
+  // 祝日判定はローカルTZのDateで（holiday_jpはローカル時刻メソッドを使用）
+  return holiday_jp.isHoliday(new Date(y, m - 1, d));
 }
 
 export function calcNights(

@@ -130,6 +130,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 車のナンバー下4桁（半角数字）の検証
+    if (!body.vehiclePlate || !/^\d{4}$/.test(body.vehiclePlate)) {
+      return NextResponse.json(
+        { error: "車のナンバー下4桁を半角数字で入力してください" },
+        { status: 400 },
+      );
+    }
+
     // 空き状況の確認
     const checkinStr = checkinRaw;
     const checkoutStr = checkoutRaw;
@@ -275,7 +283,7 @@ export async function POST(request: NextRequest) {
         guest_name: body.guestName.trim(),
         guest_email: body.guestEmail.trim().toLowerCase(),
         guest_phone: body.guestPhone.trim(),
-        vehicle_plate: (body.vehiclePlate || "").trim(),
+        vehicle_plate: body.vehiclePlate.trim(),
         notes: body.notes || "",
         is_member: body.isMember,
         checkin_date: checkinStr,
