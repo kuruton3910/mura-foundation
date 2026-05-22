@@ -316,6 +316,94 @@ export default function SettingsEditor({
         </div>
       </section>
 
+      {/* ピークシーズン設定 */}
+      <section className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+        <div className="bg-stone-50 px-5 py-3 border-b border-stone-200">
+          <h2 className="font-bold text-stone-700 flex items-center gap-2">
+            <span className="inline-block w-1 h-5 bg-[#2D4030] rounded-full" />
+            ピークシーズン設定
+          </h2>
+          <p className="text-sm text-stone-500 mt-0.5 ml-3">
+            この期間は平日も週末料金扱いになります（夏休み等）
+          </p>
+        </div>
+        <div className="px-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+          <MonthDayInput
+            label="ピークシーズン開始日"
+            monthKey="peak_season_start_month"
+            dayKey="peak_season_start_day"
+            values={values}
+            onChange={handleChange}
+          />
+          <MonthDayInput
+            label="ピークシーズン終了日"
+            monthKey="peak_season_end_month"
+            dayKey="peak_season_end_day"
+            values={values}
+            onChange={handleChange}
+          />
+        </div>
+      </section>
+
+      {/* 貸し切り料金設定 */}
+      <section className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+        <div className="bg-stone-50 px-5 py-3 border-b border-stone-200">
+          <h2 className="font-bold text-stone-700 flex items-center gap-2">
+            <span className="inline-block w-1 h-5 bg-[#2D4030] rounded-full" />
+            貸し切り料金設定
+          </h2>
+          <p className="text-sm text-stone-500 mt-0.5 ml-3">
+            貸し切り時の1泊あたりの定額料金。最大人数は大人・子ども・ペットの総計。
+          </p>
+        </div>
+        <div className="px-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+          <div className="flex items-center gap-4 py-3 border-b border-stone-100">
+            <span className="w-44 text-sm text-stone-600 shrink-0">平日料金（1泊）</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-stone-500">¥</span>
+              <input
+                type="number"
+                min={0}
+                step={1000}
+                value={values.exclusive_fee_weekday as number}
+                onChange={(e) => handleChange("exclusive_fee_weekday", Number(e.target.value))}
+                className="w-28 border border-stone-300 rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-[#2D4030]"
+              />
+              <span className="text-sm text-stone-500">/ 泊</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 py-3 border-b border-stone-100">
+            <span className="w-44 text-sm text-stone-600 shrink-0">週末・祝日料金（1泊）</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-stone-500">¥</span>
+              <input
+                type="number"
+                min={0}
+                step={1000}
+                value={values.exclusive_fee_weekend as number}
+                onChange={(e) => handleChange("exclusive_fee_weekend", Number(e.target.value))}
+                className="w-28 border border-stone-300 rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-[#2D4030]"
+              />
+              <span className="text-sm text-stone-500">/ 泊</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 py-3">
+            <span className="w-44 text-sm text-stone-600 shrink-0">最大人数（総計）</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={values.exclusive_max_persons as number}
+                onChange={(e) => handleChange("exclusive_max_persons", Number(e.target.value))}
+                className="w-16 border border-stone-300 rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-[#2D4030]"
+              />
+              <span className="text-sm text-stone-500">名（大人＋子ども＋ペット）</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 利用規約 */}
       <section className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         <div className="bg-stone-50 px-5 py-3 border-b border-stone-200 flex items-center justify-between">

@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
-import { calcTotal, calcSiteFee, type RentalOption, type SiteFees, type PersonFees, DEFAULT_PERSON_FEES } from "@/lib/booking/pricing";
+import {
+  calcTotal,
+  calcSiteFee,
+  type RentalOption,
+  type SiteFees,
+  type PersonFees,
+  type PeakSeason,
+  type ExclusiveFees,
+  DEFAULT_PERSON_FEES,
+  DEFAULT_PEAK_SEASON,
+  DEFAULT_EXCLUSIVE_FEES,
+} from "@/lib/booking/pricing";
 import type { ReservationFormData } from "@/lib/booking/schema";
 import { DEFAULT_SETTINGS } from "@/lib/booking/siteSettings";
 
@@ -69,6 +80,34 @@ export async function POST(request: NextRequest) {
       includedPersonsPerSite: settings.included_persons_per_site ?? DEFAULT_PERSON_FEES.includedPersonsPerSite,
       extraPersonFeePerNight: settings.extra_person_fee_per_night ?? DEFAULT_PERSON_FEES.extraPersonFeePerNight,
     };
+
+    // ── ピークシーズン ───────────────────────────────────────────────
+    const peakSeason: PeakSeason = {
+      startMonth: settings.peak_season_start_month ?? DEFAULT_PEAK_SEASON.startMonth,
+      startDay: settings.peak_season_start_day ?? DEFAULT_PEAK_SEASON.startDay,
+      endMonth: settings.peak_season_end_month ?? DEFAULT_PEAK_SEASON.endMonth,
+      endDay: settings.peak_season_end_day ?? DEFAULT_PEAK_SEASON.endDay,
+    };
+
+    // ── 貸し切り料金 ─────────────────────────────────────────────────
+    const exclusiveFees: ExclusiveFees = {
+      weekday: settings.exclusive_fee_weekday ?? DEFAULT_EXCLUSIVE_FEES.weekday,
+      weekend: settings.exclusive_fee_weekend ?? DEFAULT_EXCLUSIVE_FEES.weekend,
+      maxPersons: settings.exclusive_max_persons ?? DEFAULT_EXCLUSIVE_FEES.maxPersons,
+    };
+
+    // ── 貸し切り時の人数上限チェック ─────────────────────────────────
+    if (isExclusive) {
+      const totalPersons = (body.adults ?? 0) + (body.children ?? 0) + (body.pets ?? 0);
+      if (totalPersons > exclusiveFees.maxPersons) {
+        return NextResponse.json(
+          {
+            error: `貸し切りの最大人数は${exclusiveFees.maxPersons}名までです。${exclusiveFees.maxPersons + 1}名以上は別料金が発生するため、直接お問い合わせください。`,
+          },
+          { status: 400 },
+        );
+      }
+    }
 
     // ── 予約受付期間チェック ──────────────────────────────────────────
     const maxDays = body.isMember
@@ -207,7 +246,7 @@ export async function POST(request: NextRequest) {
       checkinDate: checkin,
       checkoutDate: checkout,
     };
-    const baseTotal = calcTotal(formDataWithDates, options, siteFees, personFees);
+    const baseTotal = calcTotal(formDataWithDates, options, siteFees, personFees, peakSeason, exclusiveFees);
 
     // ── クーポン検証 ──────────────────────────────────────────────────
     let discountAmount = 0;
@@ -232,7 +271,7 @@ export async function POST(request: NextRequest) {
         const memberOk = !coupon.is_member_only || body.isMember;
 
         if (withinDates && withinUses && memberOk) {
-          const siteFee = calcSiteFee(formDataWithDates, siteFees);
+          const siteFee = calcSiteFee(formDataWithDates, siteFees, peakSeason, exclusiveFees);
           discountAmount = Math.floor(
             (siteFee * coupon.discount_percent) / 100,
           );

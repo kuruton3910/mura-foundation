@@ -5,7 +5,6 @@ import { useFormContext } from "react-hook-form";
 import type { ReservationFormData } from "@/lib/booking/schema";
 import {
   calcTotal,
-  calcSiteFee,
   calcBreakdown,
   calcNights,
   formatDate,
@@ -13,8 +12,12 @@ import {
   type RentalOption,
   type SiteFees,
   type PersonFees,
+  type PeakSeason,
+  type ExclusiveFees,
   DEFAULT_SITE_FEES,
   DEFAULT_PERSON_FEES,
+  DEFAULT_PEAK_SEASON,
+  DEFAULT_EXCLUSIVE_FEES,
 } from "@/lib/booking/pricing";
 import { DEFAULT_SETTINGS } from "@/lib/booking/siteSettings";
 
@@ -52,6 +55,8 @@ export default function OrderSummary({
   const [options, setOptions] = useState<RentalOption[]>([]);
   const [siteFees, setSiteFees] = useState<SiteFees>(DEFAULT_SITE_FEES);
   const [personFees, setPersonFees] = useState<PersonFees>(DEFAULT_PERSON_FEES);
+  const [peakSeason, setPeakSeason] = useState<PeakSeason>(DEFAULT_PEAK_SEASON);
+  const [exclusiveFees, setExclusiveFees] = useState<ExclusiveFees>(DEFAULT_EXCLUSIVE_FEES);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -65,6 +70,17 @@ export default function OrderSummary({
           includedPersonsPerSite: s.included_persons_per_site ?? DEFAULT_SETTINGS.included_persons_per_site,
           extraPersonFeePerNight: s.extra_person_fee_per_night ?? DEFAULT_SETTINGS.extra_person_fee_per_night,
         });
+        setPeakSeason({
+          startMonth: s.peak_season_start_month ?? DEFAULT_SETTINGS.peak_season_start_month,
+          startDay: s.peak_season_start_day ?? DEFAULT_SETTINGS.peak_season_start_day,
+          endMonth: s.peak_season_end_month ?? DEFAULT_SETTINGS.peak_season_end_month,
+          endDay: s.peak_season_end_day ?? DEFAULT_SETTINGS.peak_season_end_day,
+        });
+        setExclusiveFees({
+          weekday: s.exclusive_fee_weekday ?? DEFAULT_SETTINGS.exclusive_fee_weekday,
+          weekend: s.exclusive_fee_weekend ?? DEFAULT_SETTINGS.exclusive_fee_weekend,
+          maxPersons: s.exclusive_max_persons ?? DEFAULT_SETTINGS.exclusive_max_persons,
+        });
       })
       .catch(() => {});
   }, []);
@@ -76,8 +92,12 @@ export default function OrderSummary({
       .catch(() => {});
   }, [isExclusive]);
 
-  const baseTotal = calcTotal(data, options, siteFees, personFees);
-  const breakdown = calcBreakdown(data, options, siteFees, personFees);
+  const baseTotal = calcTotal(data, options, siteFees, personFees, peakSeason, exclusiveFees);
+  const breakdown = calcBreakdown(data, options, siteFees, personFees, peakSeason, exclusiveFees);
+
+  // 貸し切り時の人数オーバー警告（フロント表示用、サーバー側でも検証）
+  const totalPersons = (data.adults ?? 0) + (data.children ?? 0) + (data.pets ?? 0);
+  const exclusiveOverLimit = isExclusive && totalPersons > exclusiveFees.maxPersons;
 
   // Coupon state
   const [couponInput, setCouponInput] = useState("");
@@ -290,12 +310,24 @@ export default function OrderSummary({
             </div>
           </div>
 
+          {/* 貸し切り人数オーバー警告 */}
+          {exclusiveOverLimit && (
+            <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 text-xs text-amber-900">
+              <p className="font-bold mb-1">⚠ 貸し切りの最大人数を超えています</p>
+              <p>
+                貸し切りは合計{exclusiveFees.maxPersons}名（大人・子ども・ペット含む）までです。
+                {exclusiveFees.maxPersons + 1}名以上の場合は追加料金が発生しますので、
+                <strong>直接メールにてお問い合わせください。</strong>
+              </p>
+            </div>
+          )}
+
           {/* Buttons */}
           <div className="space-y-2">
             <button
               type="button"
               onClick={onNext}
-              disabled={isSubmitting}
+              disabled={isSubmitting || exclusiveOverLimit}
               className="w-full bg-[#2D4030] hover:bg-[#2D4030]/80 text-white font-bold py-4 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? "処理中..." : STEP_BUTTON_LABELS[currentStep]}

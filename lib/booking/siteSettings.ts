@@ -13,9 +13,18 @@ export type SiteSettings = {
   booking_window_days: number; // 一般: 何日前から受付
   booking_window_member_days: number; // NAKAMA: 何日前から受付
   site_fee_weekday: number; // 平日区画料（月〜木始まりの夜）
-  site_fee_weekend: number; // 週末区画料（金・土始まりの夜）
+  site_fee_weekend: number; // 週末区画料（金・土・日・祝始まりの夜）
   included_persons_per_site: number; // 区画料に含まれる人数（大人換算）
   extra_person_fee_per_night: number; // 含まれる人数を超えた場合の追加料金/泊
+  // ピークシーズン（夏休み等）：期間内は平日でも週末料金扱い
+  peak_season_start_month: number;
+  peak_season_start_day: number;
+  peak_season_end_month: number;
+  peak_season_end_day: number;
+  // 貸し切り料金（全区画分の合計料金）
+  exclusive_fee_weekday: number; // 平日の貸し切り料金/泊
+  exclusive_fee_weekend: number; // 週末・祝日の貸し切り料金/泊
+  exclusive_max_persons: number; // 貸し切り時の最大人数（総計）
   terms_groups: TermGroup[];
 };
 
@@ -75,5 +84,12 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   site_fee_weekend: 3000,
   included_persons_per_site: 3,
   extra_person_fee_per_night: 1500,
+  peak_season_start_month: 7,
+  peak_season_start_day: 20,
+  peak_season_end_month: 8,
+  peak_season_end_day: 31,
+  exclusive_fee_weekday: 26000,
+  exclusive_fee_weekend: 35000,
+  exclusive_max_persons: 20,
   terms_groups: DEFAULT_TERM_GROUPS,
 };

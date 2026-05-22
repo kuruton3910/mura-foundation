@@ -8,7 +8,7 @@ import {
   DEFAULT_SETTINGS,
   type SiteSettings,
 } from "@/lib/booking/siteSettings";
-import { isWeekendNight } from "@/lib/booking/pricing";
+import { isWeekendNight, type PeakSeason } from "@/lib/booking/pricing";
 
 const DOW_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 const LOW_SPOTS_THRESHOLD = 3;
@@ -35,6 +35,7 @@ function toDateStr(d: Date): string {
 type DateStatus =
   | "available"
   | "full"
+  | "exclusive" // 既に貸し切り予約が入っている日
   | "past"
   | "too_far" // 予約受付前（まだ早すぎる）
   | "pre_season" // シーズン前
@@ -47,6 +48,7 @@ function getDateStatus(
   maxBookableDate: Date,
   isMember: boolean,
   spots: number | null,
+  isExclusiveBooked: boolean,
   s: SiteSettings,
 ): DateStatus {
   if (date < today) return "past";
@@ -69,6 +71,7 @@ function getDateStatus(
 
   // 管理者クローズまたは満室
   if (spots === null) return "closed";
+  if (isExclusiveBooked) return "exclusive";
   if (spots === 0) return "full";
 
   return "available";
@@ -87,8 +90,15 @@ export default function ReservationCalendar() {
   const [availability, setAvailability] = useState<
     Map<string, DailyAvailability>
   >(new Map());
+  const [exclusiveDates, setExclusiveDates] = useState<Set<string>>(new Set());
   const [loadingAvail, setLoadingAvail] = useState(false);
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
+  const peakSeason: PeakSeason = {
+    startMonth: settings.peak_season_start_month,
+    startDay: settings.peak_season_start_day,
+    endMonth: settings.peak_season_end_month,
+    endDay: settings.peak_season_end_day,
+  };
 
   // 設定を取得（初回のみ）
   useEffect(() => {
@@ -117,8 +127,10 @@ export default function ReservationCalendar() {
         map.set(item.date, item);
       }
       setAvailability(map);
+      setExclusiveDates(new Set<string>(json.exclusiveDates ?? []));
     } catch {
       setAvailability(new Map());
+      setExclusiveDates(new Set());
     } finally {
       setLoadingAvail(false);
     }
@@ -165,12 +177,14 @@ export default function ReservationCalendar() {
 
   function handleDateClick(date: Date) {
     const spots = getAvailableSpots(date);
+    const isExclusiveBooked = exclusiveDates.has(toDateStr(date));
     const status = getDateStatus(
       date,
       today,
       maxBookableDate,
       isMember,
       spots,
+      isExclusiveBooked,
       settings,
     );
     if (status !== "available") return;
@@ -225,12 +239,14 @@ export default function ReservationCalendar() {
     }
     const d = startOfDay(date);
     const spots = getAvailableSpots(d);
+    const isExclusiveBooked = exclusiveDates.has(toDateStr(d));
     const status = getDateStatus(
       d,
       today,
       maxBookableDate,
       isMember,
       spots,
+      isExclusiveBooked,
       settings,
     );
 
@@ -239,7 +255,7 @@ export default function ReservationCalendar() {
     const isInRange =
       checkinDate && checkoutDate && d > checkinDate && d < checkoutDate;
 
-    const isWeekend = isWeekendNight(d);
+    const isWeekend = isWeekendNight(d, peakSeason);
     const nightFee = isWeekend
       ? settings.site_fee_weekend
       : settings.site_fee_weekday;
@@ -295,6 +311,15 @@ export default function ReservationCalendar() {
           priceCls: "",
           badge: "×",
           badgeCls: "text-[10px] mt-1 text-red-400",
+        };
+      case "exclusive":
+        return {
+          cell: "bg-purple-50 p-2 h-20 flex flex-col items-center cursor-not-allowed border border-purple-200",
+          text: "text-purple-700",
+          price: "",
+          priceCls: "",
+          badge: "貸切",
+          badgeCls: "text-[10px] mt-1 text-purple-700 font-bold",
         };
       case "past":
         return {
@@ -488,15 +513,27 @@ export default function ReservationCalendar() {
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 bg-rose-50 border border-rose-200 rounded inline-block" />{" "}
-          週末・祝日 <span className="text-rose-500 font-medium">¥{settings.site_fee_weekend.toLocaleString()}</span>
+          週末・祝日・ピーク <span className="text-rose-500 font-medium">¥{settings.site_fee_weekend.toLocaleString()}</span>
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 bg-amber-50 border border-amber-200 rounded inline-block" />{" "}
           NAKAMA限定
         </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-3 bg-purple-50 border border-purple-200 rounded inline-block" />{" "}
+          貸切予約済
+        </span>
         <span className="flex items-center gap-1 opacity-40">
           <span className="w-3 h-3 bg-gray-200 rounded inline-block" /> 予約不可
         </span>
+      </div>
+
+      {/* アイコン凡例 */}
+      <div className="px-3 pb-3 pt-1 bg-stone-50 border-t border-stone-100 flex flex-wrap gap-3 text-xs text-stone-500">
+        <span className="text-stone-400">アイコン:</span>
+        <span className="flex items-center gap-1">🌕 満月</span>
+        <span className="flex items-center gap-1">🌑 新月</span>
+        <span className="flex items-center gap-1">🌠 流星群</span>
       </div>
     </div>
   );

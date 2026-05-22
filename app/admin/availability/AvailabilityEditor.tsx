@@ -21,7 +21,7 @@ const DEFAULT_SITES = 5;
 const ICONS = [
   { value: "🌕", label: "満月" },
   { value: "🌑", label: "新月" },
-  { value: "⭐", label: "星" },
+  { value: "🌠", label: "流星群" },
 ];
 
 function buildDateList(from: string, to: string): string[] {
