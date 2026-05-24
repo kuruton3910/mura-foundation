@@ -31,9 +31,19 @@ export default function AdminLayout({
     router.refresh();
   }
 
+  // 管理画面は本番リリース後も検索エンジンに載せない
+  const noIndexMeta = (
+    <meta name="robots" content="noindex,nofollow,noarchive" />
+  );
+
   // ログインページではサイドバーを表示しない
   if (pathname === "/admin/login") {
-    return <>{children}</>;
+    return (
+      <>
+        {noIndexMeta}
+        {children}
+      </>
+    );
   }
 
   // ナビゲーション項目クリック時にモバイルサイドバーを閉じる
@@ -42,7 +52,9 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 flex flex-col lg:flex-row">
+    <>
+      {noIndexMeta}
+      <div className="min-h-screen bg-stone-100 flex flex-col lg:flex-row">
       {/* モバイル用ヘッダーバー（lg以上では非表示） */}
       <header className="lg:hidden flex items-center justify-between bg-[#2D4030] text-white px-4 py-3 shrink-0">
         <div>
@@ -155,6 +167,7 @@ export default function AdminLayout({
 
       {/* メインコンテンツ */}
       <main className="flex-1 overflow-auto">{children}</main>
-    </div>
+      </div>
+    </>
   );
 }
