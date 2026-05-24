@@ -208,8 +208,8 @@ export default function StepConditions({ error }: { error?: string }) {
               ? "bg-purple-50 border-purple-400"
               : "bg-stone-50 border-stone-200"
           }`}>
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
                 <p className="font-bold text-stone-800 flex items-center gap-2">
                   <span className="text-purple-600">★</span>
                   貸し切りリクエストが可能です
@@ -218,8 +218,23 @@ export default function StepConditions({ error }: { error?: string }) {
                   この日程はすべての区画（{exclusiveSiteCount}区画）が空いています。
                   貸し切りでご利用いただけます。
                 </p>
+
+                {/* 貸し切り料金・人数のご案内 */}
+                <div className="mt-3 p-3 bg-white border border-purple-200 rounded-lg text-xs text-stone-700 space-y-1">
+                  <p className="font-bold text-purple-700">貸し切り料金・条件</p>
+                  <ul className="list-disc list-inside space-y-0.5 ml-1">
+                    <li>大人・子ども・ペットの総計 <strong>{settings.exclusive_max_persons}名まで</strong></li>
+                    <li>平日 <strong>¥{settings.exclusive_fee_weekday.toLocaleString()}</strong> / 泊</li>
+                    <li>金・土・日・祝日 <strong>¥{settings.exclusive_fee_weekend.toLocaleString()}</strong> / 泊</li>
+                    <li className="text-amber-700">
+                      {settings.exclusive_max_persons + 1}名を超える場合は追加料金が発生します。
+                      <strong>直接メールでご連絡ください。</strong>
+                    </li>
+                  </ul>
+                </div>
+
                 {isExclusive && (
-                  <p className="text-xs text-purple-700 mt-1 font-medium">
+                  <p className="text-xs text-purple-700 mt-2 font-medium">
                     全{exclusiveSiteCount}区画を確保します。貸し切り専用オプションが選択できます。
                   </p>
                 )}
@@ -227,7 +242,7 @@ export default function StepConditions({ error }: { error?: string }) {
               <button
                 type="button"
                 onClick={handleExclusiveToggle}
-                className="relative inline-flex items-center cursor-pointer ml-4 shrink-0"
+                className="relative inline-flex items-center cursor-pointer mt-1 shrink-0"
               >
                 <div
                   className={`w-11 h-6 rounded-full transition-colors ${
