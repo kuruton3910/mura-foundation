@@ -340,7 +340,7 @@ export default function OptionsEditor() {
                 className="w-4 h-4 accent-purple-600"
               />
               <label htmlFor="is_exclusive_only" className="text-sm text-stone-700">
-                貸し切り専用（チェックを入れると貸し切りリクエスト時のみ表示されます）
+                貸し切り限定（OFF＝通常・貸切の両方で表示 / ON＝貸切予約時のみ表示）
               </label>
             </div>
           </div>

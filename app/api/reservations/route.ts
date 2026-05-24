@@ -53,12 +53,17 @@ export async function POST(request: NextRequest) {
     const supabase = createServerClient();
 
     // ── レンタルオプション一覧を取得 ──────────────────────────────────
+    // 通常予約：is_exclusive_only=false のみ
+    // 貸し切り予約：全アクティブオプション（通常 + 貸し切り限定）
     const isExclusive = body.isExclusive === true;
-    const { data: optionsData } = await supabase
+    let optionsQuery = supabase
       .from("rental_options")
       .select("id, name, price_per_unit, unit_label, max_count, description")
-      .eq("is_active", true)
-      .eq("is_exclusive_only", isExclusive);
+      .eq("is_active", true);
+    if (!isExclusive) {
+      optionsQuery = optionsQuery.eq("is_exclusive_only", false);
+    }
+    const { data: optionsData } = await optionsQuery;
     const options: RentalOption[] = optionsData ?? [];
 
     // ── サイト設定をDBから取得 ────────────────────────────────────────
