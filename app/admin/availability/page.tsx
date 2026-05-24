@@ -20,11 +20,11 @@ export default async function AdminAvailabilityPage() {
     .lte("date", toStr)
     .order("date");
 
-  // Get current reservations count per date
+  // Get current reservations count per date（pending含む。is_exclusiveもフェッチ）
   const { data: reservations } = await supabase
     .from("reservations")
-    .select("checkin_date, checkout_date, vehicle_count")
-    .eq("status", "confirmed")
+    .select("checkin_date, checkout_date, vehicle_count, is_exclusive, status")
+    .in("status", ["pending", "confirmed"])
     .gte("checkin_date", fromStr)
     .lte("checkin_date", toStr);
 

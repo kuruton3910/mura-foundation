@@ -93,6 +93,7 @@ export default function ReservationCalendar() {
   const [exclusiveDates, setExclusiveDates] = useState<Set<string>>(new Set());
   const [loadingAvail, setLoadingAvail] = useState(false);
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
+  const [rangeError, setRangeError] = useState<string | null>(null);
   const peakSeason: PeakSeason = {
     startMonth: settings.peak_season_start_month,
     startDay: settings.peak_season_start_day,
@@ -175,6 +176,28 @@ export default function ReservationCalendar() {
     } else setViewMonth((m) => m + 1);
   }
 
+  // 宿泊夜（チェックイン〜チェックアウト前日）の中に予約不可日がないか検証
+  function isStayRangeAvailable(checkin: Date, checkout: Date): boolean {
+    const cur = new Date(checkin.getFullYear(), checkin.getMonth(), checkin.getDate());
+    while (cur < checkout) {
+      const dStr = toDateStr(cur);
+      const dSpots = getAvailableSpots(cur);
+      const dExclusive = exclusiveDates.has(dStr);
+      const dStatus = getDateStatus(
+        cur,
+        today,
+        maxBookableDate,
+        isMember,
+        dSpots,
+        dExclusive,
+        settings,
+      );
+      if (dStatus !== "available") return false;
+      cur.setDate(cur.getDate() + 1);
+    }
+    return true;
+  }
+
   function handleDateClick(date: Date) {
     const spots = getAvailableSpots(date);
     const isExclusiveBooked = exclusiveDates.has(toDateStr(date));
@@ -187,12 +210,44 @@ export default function ReservationCalendar() {
       isExclusiveBooked,
       settings,
     );
+
+    // チェックアウトを選ぶ局面か判定
+    // (チェックイン済み・チェックアウト未選択・クリック日がチェックインより後)
+    const isSelectingCheckout =
+      checkinDate !== null && checkoutDate === null && date > checkinDate;
+
+    if (isSelectingCheckout) {
+      // チェックアウト日自体は宿泊しないので、満室・貸切・休業の日でも選べる
+      // ただし過去日・受付前・シーズン外は不可
+      if (
+        status === "past" ||
+        status === "pre_season" ||
+        status === "post_season" ||
+        status === "too_far"
+      ) {
+        return;
+      }
+      // 途中の宿泊夜に予約不可日があれば選択不可
+      if (!isStayRangeAvailable(checkinDate!, date)) {
+        setRangeError(
+          "選択範囲に予約不可（貸切・休業・満室）の日が含まれています。連続予約はできません。",
+        );
+        return;
+      }
+      setRangeError(null);
+      setValue("checkoutDate", date);
+      return;
+    }
+
+    // チェックインまたは選択リセット時：availableの日のみ選択可能
     if (status !== "available") return;
+    setRangeError(null);
 
     if (!checkinDate || (checkinDate && checkoutDate)) {
       setValue("checkinDate", date);
       setValue("checkoutDate", null);
     } else {
+      // チェックイン済みで同日以前をクリック → チェックインを再設定
       if (date <= checkinDate) {
         setValue("checkinDate", date);
         setValue("checkoutDate", null);
@@ -426,6 +481,14 @@ export default function ReservationCalendar() {
           </span>
         )}
       </div>
+
+      {/* 範囲選択エラー（連続予約不可など） */}
+      {rangeError && (
+        <div className="bg-red-50 border-b border-red-200 px-4 py-2 text-xs text-red-700 flex items-start gap-2">
+          <span>⚠</span>
+          <span>{rangeError}</span>
+        </div>
+      )}
 
       <div className="bg-stone-100 p-4 flex justify-between items-center border-b">
         <button

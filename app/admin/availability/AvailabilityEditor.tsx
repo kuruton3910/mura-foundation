@@ -16,6 +16,8 @@ type Reservation = {
   checkin_date: string;
   checkout_date: string;
   vehicle_count: number;
+  is_exclusive?: boolean;
+  status?: string;
 };
 
 const DEFAULT_SITES = 5;
@@ -40,6 +42,12 @@ function getBookedCount(date: string, reservations: Reservation[]): number {
   return reservations
     .filter((r) => r.checkin_date <= date && r.checkout_date > date)
     .reduce((s, r) => s + r.vehicle_count, 0);
+}
+
+function hasExclusiveBooking(date: string, reservations: Reservation[]): boolean {
+  return reservations.some(
+    (r) => r.is_exclusive && r.checkin_date <= date && r.checkout_date > date,
+  );
 }
 
 export default function AvailabilityEditor({
@@ -311,11 +319,14 @@ export default function AvailabilityEditor({
               });
 
               const isExclusiveBlocked = ov?.is_exclusive_blocked ?? false;
+              const hasExclusive = hasExclusiveBooking(date, reservations);
+              // 「貸切」表示の理由: 管理画面マーク OR 実予約に貸切がある
+              const isExclusiveDay = isExclusiveBlocked || hasExclusive;
               return (
                 <div
                   key={date}
                   className={`px-5 py-3 text-sm ${
-                    isClosed ? "bg-red-50" : isExclusiveBlocked ? "bg-purple-50" : ""
+                    isClosed ? "bg-red-50" : isExclusiveDay ? "bg-purple-50" : ""
                   }`}
                 >
                   {/* 1行目: 日付・ステータス・予約数 */}
@@ -328,7 +339,7 @@ export default function AvailabilityEditor({
                       className={`w-20 text-center text-xs font-medium px-2 py-1 rounded-full ${
                         isClosed
                           ? "bg-red-100 text-red-700"
-                          : isExclusiveBlocked
+                          : isExclusiveDay
                             ? "bg-purple-100 text-purple-700"
                             : available <= 0
                               ? "bg-stone-100 text-stone-500"
@@ -337,7 +348,13 @@ export default function AvailabilityEditor({
                                 : "bg-emerald-100 text-emerald-700"
                       }`}
                     >
-                      {isClosed ? "休業" : isExclusiveBlocked ? "貸切" : `残${available}区画`}
+                      {isClosed
+                        ? "休業"
+                        : isExclusiveDay
+                          ? hasExclusive
+                            ? "貸切予約"
+                            : "貸切"
+                          : `残${available}区画`}
                     </span>
 
                     <span className="text-stone-400 text-xs">
@@ -384,7 +401,7 @@ export default function AvailabilityEditor({
                           disabled={isSaving}
                           className="border border-stone-200 rounded px-1.5 py-0.5 text-xs text-stone-700 focus:outline-none focus:ring-1 focus:ring-[#2D4030]"
                         >
-                          {[1, 2, 3, 4, 5].map((n) => (
+                          {[0, 1, 2, 3, 4, 5].map((n) => (
                             <option key={n} value={n}>
                               {n}
                             </option>

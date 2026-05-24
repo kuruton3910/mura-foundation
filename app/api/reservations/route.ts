@@ -194,6 +194,37 @@ export async function POST(request: NextRequest) {
 
     if (availError) throw availError;
 
+    // 管理者が手動で「貸切」マークした日も取得（他チャンネル経由の貸切予約用）
+    const { data: manualExclusiveBlocks } = await supabase
+      .from("availability_overrides")
+      .select("date")
+      .eq("is_exclusive_blocked", true)
+      .gte("date", checkinStr)
+      .lt("date", checkoutStr);
+    const manualExclusiveSet = new Set<string>(
+      (manualExclusiveBlocks ?? []).map((r) => r.date as string),
+    );
+
+    // 既存の貸切予約（pending or confirmed）が入っている日を取得
+    const { data: existingExclusiveReservations } = await supabase
+      .from("reservations")
+      .select("checkin_date, checkout_date")
+      .eq("is_exclusive", true)
+      .in("status", ["pending", "confirmed"])
+      .lte("checkin_date", checkoutStr)
+      .gt("checkout_date", checkinStr);
+    const existingExclusiveSet = new Set<string>();
+    for (const r of existingExclusiveReservations ?? []) {
+      let cur = r.checkin_date as string;
+      const end = r.checkout_date as string;
+      while (cur < end) {
+        existingExclusiveSet.add(cur);
+        const [y, m, d] = cur.split("-").map(Number);
+        const next = new Date(Date.UTC(y, m - 1, d + 1));
+        cur = next.toISOString().split("T")[0];
+      }
+    }
+
     // DBから取得したmax_sitesのデフォルト値（site_settingsにmax_sitesがあればそれを使用）
     const defaultMaxSites = (settingsData as Record<string, unknown>)?.max_sites as number ?? 5;
 
@@ -208,6 +239,14 @@ export async function POST(request: NextRequest) {
     while (curDate < checkoutStr) {
       const dateStr = curDate;
       const row = availMap.get(dateStr);
+
+      // 手動「貸切」マーク or 既存貸切予約がある日は予約不可
+      if (manualExclusiveSet.has(dateStr) || existingExclusiveSet.has(dateStr)) {
+        return NextResponse.json(
+          { error: `${dateStr} は貸切のため予約できません` },
+          { status: 409 },
+        );
+      }
 
       if (isExclusive) {
         // 貸し切りリクエストの場合: 全日程で全枠が空いている必要がある
