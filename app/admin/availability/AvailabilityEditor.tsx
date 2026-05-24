@@ -8,6 +8,7 @@ type Override = {
   date: string;
   max_sites: number | null;
   is_closed: boolean;
+  is_exclusive_blocked?: boolean;
   icon: string | null;
 };
 
@@ -140,6 +141,32 @@ export default function AvailabilityEditor({
         next.set(date, data.override);
         setOverrideMap(next);
       }
+    }
+    setSaving(null);
+    router.refresh();
+  }
+
+  async function toggleExclusiveBlocked(date: string) {
+    const existing = overrideMap.get(date);
+    const turnOn = !existing?.is_exclusive_blocked;
+    setSaving(date);
+
+    const res = await fetch(`/api/admin/availability`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        date,
+        is_closed: existing?.is_closed ?? false,
+        is_exclusive_blocked: turnOn,
+        available_sites: existing?.max_sites ?? null,
+        icon: existing?.icon ?? null,
+      }),
+    });
+    const data = await res.json();
+    if (data.override) {
+      const next = new Map(overrideMap);
+      next.set(date, data.override);
+      setOverrideMap(next);
     }
     setSaving(null);
     router.refresh();
@@ -283,11 +310,12 @@ export default function AvailabilityEditor({
                 weekday: "short",
               });
 
+              const isExclusiveBlocked = ov?.is_exclusive_blocked ?? false;
               return (
                 <div
                   key={date}
                   className={`px-5 py-3 text-sm ${
-                    isClosed ? "bg-red-50" : ""
+                    isClosed ? "bg-red-50" : isExclusiveBlocked ? "bg-purple-50" : ""
                   }`}
                 >
                   {/* 1行目: 日付・ステータス・予約数 */}
@@ -300,14 +328,16 @@ export default function AvailabilityEditor({
                       className={`w-20 text-center text-xs font-medium px-2 py-1 rounded-full ${
                         isClosed
                           ? "bg-red-100 text-red-700"
-                          : available <= 0
-                            ? "bg-stone-100 text-stone-500"
-                            : available <= 2
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-emerald-100 text-emerald-700"
+                          : isExclusiveBlocked
+                            ? "bg-purple-100 text-purple-700"
+                            : available <= 0
+                              ? "bg-stone-100 text-stone-500"
+                              : available <= 2
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-emerald-100 text-emerald-700"
                       }`}
                     >
-                      {isClosed ? "休業" : `残${available}区画`}
+                      {isClosed ? "休業" : isExclusiveBlocked ? "貸切" : `残${available}区画`}
                     </span>
 
                     <span className="text-stone-400 text-xs">
@@ -363,11 +393,25 @@ export default function AvailabilityEditor({
                       </div>
                     )}
 
+                    {/* 貸切トグルボタン（他チャンネル経由の貸切予約用） */}
+                    <button
+                      onClick={() => toggleExclusiveBlocked(date)}
+                      disabled={isSaving || isClosed}
+                      title="電話やメール経由で貸切予約が入った日にマーク"
+                      className={`px-3 py-1 rounded text-xs font-medium transition-colors disabled:opacity-30 ml-auto ${
+                        isExclusiveBlocked
+                          ? "bg-stone-100 text-stone-700 hover:bg-stone-200"
+                          : "bg-purple-100 text-purple-700 hover:bg-purple-200"
+                      }`}
+                    >
+                      {isSaving ? "..." : isExclusiveBlocked ? "貸切解除" : "貸切にする"}
+                    </button>
+
                     {/* 休業トグルボタン */}
                     <button
                       onClick={() => toggleClosed(date)}
-                      disabled={isSaving}
-                      className={`px-3 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50 ml-auto ${
+                      disabled={isSaving || isExclusiveBlocked}
+                      className={`px-3 py-1 rounded text-xs font-medium transition-colors disabled:opacity-30 ${
                         isClosed
                           ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
                           : "bg-red-100 text-red-700 hover:bg-red-200"

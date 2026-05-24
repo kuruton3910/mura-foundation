@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const supabase = createServerClient();
 
     const body = await request.json();
-    const { is_closed, available_sites, icon } = body;
+    const { is_closed, available_sites, icon, is_exclusive_blocked } = body;
 
     // --- 一括設定 ---
     if (body.from && body.to) {
@@ -46,9 +46,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "date が必要です" }, { status: 400 });
     }
 
+    const upsertData: Record<string, unknown> = {
+      date,
+      is_closed,
+      max_sites: available_sites,
+      icon: icon ?? null,
+    };
+    if (typeof is_exclusive_blocked === "boolean") {
+      upsertData.is_exclusive_blocked = is_exclusive_blocked;
+    }
+
     const { data: override, error } = await supabase
       .from("availability_overrides")
-      .upsert({ date, is_closed, max_sites: available_sites, icon: icon ?? null }, { onConflict: "date" })
+      .upsert(upsertData, { onConflict: "date" })
       .select()
       .single();
 

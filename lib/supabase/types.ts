@@ -44,6 +44,7 @@ export type AvailabilityOverride = {
   id: string;
   date: string;
   is_closed: boolean;
+  is_exclusive_blocked: boolean; // 管理者が手動で「貸切」マーク（他チャンネル経由の貸切予約用）
   max_sites: number | null;
   note: string | null;
   icon: string | null;

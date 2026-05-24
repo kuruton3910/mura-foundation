@@ -50,6 +50,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 管理者が手動でマークした「貸切」日も含める（他チャンネル経由の貸切予約用）
+    const { data: manualBlocks } = await supabase
+      .from("availability_overrides")
+      .select("date")
+      .eq("is_exclusive_blocked", true)
+      .gte("date", from)
+      .lte("date", to);
+    for (const row of manualBlocks ?? []) {
+      exclusiveDates.add(row.date as string);
+    }
+
     return NextResponse.json({
       availability: data as DailyAvailability[],
       exclusiveDates: Array.from(exclusiveDates),
