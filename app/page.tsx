@@ -145,20 +145,20 @@ export default function Page() {
     <FormProvider {...methods}>
       <div className="bg-[#F8F9F4] text-stone-800 font-sans min-h-screen">
         {/* Header */}
-        <header className="bg-[#2D4030] text-white py-4 shadow-md">
+        <header className="bg-white border-b border-stone-200 shadow-sm py-4 md:py-5">
           <div className="container mx-auto px-4 flex justify-between items-center gap-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo.png"
-              alt="MURA CAMPING GROUND"
-              className="h-12 md:h-14 w-auto object-contain"
+              alt="MURA FOUNDATION"
+              className="h-12 sm:h-16 md:h-20 lg:h-24 w-auto object-contain"
             />
             <div className="hidden md:block">
               <a
                 href="https://www.murafoundation.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-white/10 px-4 py-2 rounded-full text-sm hover:bg-white/20 transition-colors inline-block"
+                className="bg-[#2D4030]/10 text-[#2D4030] px-4 py-2 rounded-full text-sm hover:bg-[#2D4030]/20 transition-colors inline-block"
               >
                 www.murafoundation.com
               </a>
