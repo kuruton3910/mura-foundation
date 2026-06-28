@@ -20,6 +20,10 @@ export type Reservation = {
   guest_email: string;
   guest_phone: string;
   vehicle_plate: string;
+  postal_code: string;
+  prefecture: string;
+  city: string;
+  address_line: string;
   notes: string;
   is_member: boolean;
   checkin_date: string; // YYYY-MM-DD

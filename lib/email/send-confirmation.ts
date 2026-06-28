@@ -17,6 +17,10 @@ type ConfirmationEmailParams = {
   checkoutDate: string;
   vehicleCount: number;
   vehiclePlate?: string;
+  postalCode?: string;
+  prefecture?: string;
+  city?: string;
+  addressLine?: string;
   adults: number;
   children: number;
   pets: number;
@@ -37,6 +41,10 @@ export async function sendConfirmationEmail(
 
   const resend = new Resend(apiKey);
   const from = process.env.RESEND_FROM_EMAIL || "noreply@murafoundation.com";
+  // メール本文の問い合わせ先・サイト名（環境変数で差し替え可能）
+  const contactEmail = process.env.MAIL_CONTACT_EMAIL || "info@murafoundation.com";
+  const siteName = process.env.MAIL_SITE_NAME || "MURA CAMPING GROUND";
+  const siteUrl = process.env.MAIL_SITE_URL || "www.murafoundation.com";
 
   const discount = params.discountAmount && params.discountAmount > 0;
 
@@ -88,6 +96,7 @@ export async function sendConfirmationEmail(
         <div class="row"><span class="label">チェックアウト</span><span class="value">${params.checkoutDate}（〜11:00）</span></div>
         <div class="row"><span class="label">区画数</span><span class="value">${params.vehicleCount}区画</span></div>
         ${params.vehiclePlate ? `<div class="row"><span class="label">車のナンバー</span><span class="value">${params.vehiclePlate}</span></div>` : ""}
+        ${(params.postalCode || params.prefecture) ? `<div class="row"><span class="label">ご住所</span><span class="value">${params.postalCode ? `〒${params.postalCode}<br>` : ""}${params.prefecture ?? ""}${params.city ?? ""}${params.addressLine ?? ""}</span></div>` : ""}
         <div class="row"><span class="label">人数</span><span class="value">大人${params.adults}名${params.children > 0 ? ` / 子供${params.children}名` : ""}${params.pets > 0 ? ` / ペット${params.pets}匹` : ""}</span></div>
         ${params.selectedOptions && params.selectedOptions.length > 0
           ? params.selectedOptions.map(opt =>
@@ -114,22 +123,31 @@ export async function sendConfirmationEmail(
       </div>
 
       <p style="font-size:13px;color:#6b7280;">
-        ご不明な点は <strong>info@murafoundation.com</strong> までお問い合わせください。
+        ご不明な点は <strong>${contactEmail}</strong> までお問い合わせください。
       </p>
       <p class="ref">予約番号: ${params.reservationId}</p>
     </div>
 
     <div class="footer">
-      &copy; 2026 MURA CAMPING GROUND &nbsp;|&nbsp; www.murafoundation.com
+      &copy; 2026 ${siteName} &nbsp;|&nbsp; ${siteUrl}
     </div>
   </div>
 </body>
 </html>
   `.trim();
 
+  // 管理者通知用 BCC（環境変数優先、未設定なら開発者アドレスに送る）
+  // カンマ区切りで複数指定可: "a@x.com,b@y.com"
+  const adminBccRaw = process.env.ADMIN_NOTIFY_EMAIL || "beckeymiku@gmail.com";
+  const adminBcc = adminBccRaw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
   await resend.emails.send({
     from,
     to: params.guestEmail,
+    bcc: adminBcc,
     subject: `【MURA CAMPING GROUND】ご予約確認 ${params.checkinDate}〜${params.checkoutDate}`,
     html,
   });

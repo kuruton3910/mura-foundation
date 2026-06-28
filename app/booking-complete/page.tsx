@@ -147,6 +147,16 @@ function BookingCompleteContent() {
               </>
             )}
 
+            {(reservation.postal_code || reservation.prefecture) && (
+              <>
+                <span className="text-gray-500">ご住所</span>
+                <span className="font-bold">
+                  {reservation.postal_code && `〒${reservation.postal_code} `}
+                  {reservation.prefecture}{reservation.city}{reservation.address_line}
+                </span>
+              </>
+            )}
+
             <span className="text-gray-500">人数</span>
             <span className="font-bold">
               大人 {reservation.adults}名

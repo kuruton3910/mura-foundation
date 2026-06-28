@@ -242,6 +242,20 @@ export default function SettingsEditor({
             values={values}
             onChange={handleChange}
           />
+          <div className="flex items-center gap-4 py-3 border-b border-stone-100">
+            <span className="w-44 text-sm text-stone-600 shrink-0">最大連泊数</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={values.max_stay_nights as number}
+                onChange={(e) => handleChange("max_stay_nights", Number(e.target.value))}
+                className="w-16 border border-stone-300 rounded px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-[#2D4030]"
+              />
+              <span className="text-sm text-stone-500">泊まで（超過は直接メール対応）</span>
+            </div>
+          </div>
         </div>
       </section>
 

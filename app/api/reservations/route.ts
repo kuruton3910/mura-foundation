@@ -74,6 +74,18 @@ export async function POST(request: NextRequest) {
       .single();
     const settings = { ...DEFAULT_SETTINGS, ...(settingsData ?? {}) };
 
+    // ── 最大連泊数チェック ───────────────────────────────────────────
+    const stayNights = Math.round((checkout.getTime() - checkin.getTime()) / (1000 * 60 * 60 * 24));
+    const maxStayNights = settings.max_stay_nights ?? DEFAULT_SETTINGS.max_stay_nights;
+    if (stayNights > maxStayNights) {
+      return NextResponse.json(
+        {
+          error: `連続宿泊は最大${maxStayNights}泊までです。${maxStayNights + 1}泊以上をご希望の場合は直接メールでお問い合わせください。`,
+        },
+        { status: 400 },
+      );
+    }
+
     // ── 区画料（平日/週末） ──────────────────────────────────────────
     const siteFees: SiteFees = {
       weekday: settings.site_fee_weekday ?? DEFAULT_SETTINGS.site_fee_weekday,
@@ -178,6 +190,21 @@ export async function POST(request: NextRequest) {
     if (!body.vehiclePlate || !/^\d{4}$/.test(body.vehiclePlate)) {
       return NextResponse.json(
         { error: "車のナンバー下4桁を半角数字で入力してください" },
+        { status: 400 },
+      );
+    }
+
+    // 住所の検証（郵便番号7桁、都道府県・市区町村・番地以下が必須）
+    const postalDigits = (body.postalCode ?? "").replace(/[-\s]/g, "");
+    if (!/^\d{7}$/.test(postalDigits)) {
+      return NextResponse.json(
+        { error: "郵便番号を半角数字7桁で入力してください" },
+        { status: 400 },
+      );
+    }
+    if (!body.prefecture?.trim() || !body.city?.trim() || !body.addressLine?.trim()) {
+      return NextResponse.json(
+        { error: "住所が不足しています" },
         { status: 400 },
       );
     }
@@ -367,6 +394,10 @@ export async function POST(request: NextRequest) {
         guest_email: body.guestEmail.trim().toLowerCase(),
         guest_phone: body.guestPhone.trim(),
         vehicle_plate: body.vehiclePlate.trim(),
+        postal_code: postalDigits.slice(0, 3) + "-" + postalDigits.slice(3),
+        prefecture: body.prefecture.trim(),
+        city: body.city.trim(),
+        address_line: body.addressLine.trim(),
         notes: body.notes || "",
         is_member: body.isMember,
         checkin_date: checkinStr,

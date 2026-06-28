@@ -12,6 +12,7 @@ export type SiteSettings = {
   member_close_day: number;
   booking_window_days: number; // 一般: 何日前から受付
   booking_window_member_days: number; // NAKAMA: 何日前から受付
+  max_stay_nights: number; // 連続宿泊の上限（これを超える予約は不可）
   site_fee_weekday: number; // 平日区画料（月〜木始まりの夜）
   site_fee_weekend: number; // 週末区画料（金・土・日・祝始まりの夜）
   included_persons_per_site: number; // 区画料に含まれる人数（大人換算）
@@ -80,6 +81,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   member_close_day: 30,
   booking_window_days: 30,
   booking_window_member_days: 60,
+  max_stay_nights: 7,
   site_fee_weekday: 2500,
   site_fee_weekend: 3000,
   included_persons_per_site: 3,

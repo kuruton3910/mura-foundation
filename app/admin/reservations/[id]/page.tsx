@@ -78,6 +78,18 @@ export default async function ReservationDetailPage({
               label="車のナンバー"
               value={reservation.vehicle_plate || "未入力"}
             />
+            <InfoRow
+              label="郵便番号"
+              value={reservation.postal_code || "未入力"}
+            />
+            <InfoRow
+              label="ご住所"
+              value={
+                (reservation.prefecture || reservation.city || reservation.address_line)
+                  ? `${reservation.prefecture ?? ""}${reservation.city ?? ""}${reservation.address_line ?? ""}`
+                  : "未入力"
+              }
+            />
           </dl>
           {reservation.notes && (
             <div className="mt-4 p-3 bg-stone-50 rounded-lg text-sm text-stone-600">

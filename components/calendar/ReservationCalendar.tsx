@@ -156,9 +156,20 @@ export default function ReservationCalendar() {
     viewYear === today.getFullYear() && viewMonth <= today.getMonth()
   );
 
-  // 翌月の1日目が予約可能期間内かどうか
-  const canGoNext =
-    new Date(viewYear, viewMonth + 1, 1) <= maxBookableDate;
+  // カレンダー移動の上限
+  // 通常: 予約受付期間の最終日まで
+  // チェックイン選択済み: シーズン終了月の翌月末まで（チェックアウト日選択のため）
+  const navigationLimit = (() => {
+    if (!checkinDate) return maxBookableDate;
+    const closeMonth = isMember
+      ? settings.member_close_month
+      : settings.season_close_month;
+    // closeMonth は 1-indexed → JS Date は 0-indexed。翌月末は new Date(year, closeMonth + 1, 0)
+    return new Date(checkinDate.getFullYear(), closeMonth + 1, 0);
+  })();
+
+  // 翌月の1日目が移動可能上限以内か
+  const canGoNext = new Date(viewYear, viewMonth + 1, 1) <= navigationLimit;
 
   function prevMonth() {
     if (!canGoPrev) return;
@@ -177,6 +188,8 @@ export default function ReservationCalendar() {
   }
 
   // 宿泊夜（チェックイン〜チェックアウト前日）の中に予約不可日がないか検証
+  // 「予約受付期間外（too_far）」は宿泊夜としては許可
+  // （チェックイン日が受付期間内なら、その後の宿泊夜も予約OK＝サーバーと同じ挙動）
   function isStayRangeAvailable(checkin: Date, checkout: Date): boolean {
     const cur = new Date(checkin.getFullYear(), checkin.getMonth(), checkin.getDate());
     while (cur < checkout) {
@@ -192,7 +205,9 @@ export default function ReservationCalendar() {
         dExclusive,
         settings,
       );
-      if (dStatus !== "available") return false;
+      // available または too_far(受付期間外だが営業中) は許可
+      // それ以外（休業・貸切・満室・シーズン外・過去）はNG
+      if (dStatus !== "available" && dStatus !== "too_far") return false;
       cur.setDate(cur.getDate() + 1);
     }
     return true;
@@ -217,20 +232,25 @@ export default function ReservationCalendar() {
       checkinDate !== null && checkoutDate === null && date > checkinDate;
 
     if (isSelectingCheckout) {
-      // チェックアウト日自体は宿泊しないので、満室・貸切・休業の日でも選べる
-      // ただし過去日・受付前・シーズン外は不可
-      if (
-        status === "past" ||
-        status === "pre_season" ||
-        status === "post_season" ||
-        status === "too_far"
-      ) {
+      // チェックアウト日自体は宿泊しないので、満室・貸切・休業・予約受付期間外でも選べる
+      // ただし過去日・シーズン前は不可
+      if (status === "past" || status === "pre_season") {
+        return;
+      }
+      // 最大連泊数チェック
+      const proposedNights = Math.round(
+        (date.getTime() - checkinDate!.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      if (proposedNights > settings.max_stay_nights) {
+        setRangeError(
+          `連続宿泊は最大${settings.max_stay_nights}泊までです。${settings.max_stay_nights + 1}泊以上をご希望の場合は直接メールでお問い合わせください。`,
+        );
         return;
       }
       // 途中の宿泊夜に予約不可日があれば選択不可
       if (!isStayRangeAvailable(checkinDate!, date)) {
         setRangeError(
-          "選択範囲に予約不可（貸切・休業・満室）の日が含まれています。連続予約はできません。",
+          "選択範囲に予約不可（貸切・休業・満室・シーズン外）の日が含まれています。",
         );
         return;
       }
@@ -310,6 +330,21 @@ export default function ReservationCalendar() {
     const isInRange =
       checkinDate && checkoutDate && d > checkinDate && d < checkoutDate;
 
+    // チェックアウト日として選択可能か：
+    //   1. チェックイン済み・チェックアウト未選択・未来日
+    //   2. 最大連泊数以内
+    //   3. 途中の宿泊夜に予約不可日（貸切・休業・満室）が含まれない
+    const canBeCheckout = (() => {
+      if (checkinDate === null || checkoutDate !== null) return false;
+      if (d <= checkinDate) return false;
+      const proposedNights = Math.round(
+        (d.getTime() - checkinDate.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      if (proposedNights > settings.max_stay_nights) return false;
+      if (!isStayRangeAvailable(checkinDate, d)) return false;
+      return true;
+    })();
+
     const isWeekend = isWeekendNight(d, peakSeason);
     const nightFee = isWeekend
       ? settings.site_fee_weekend
@@ -359,6 +394,16 @@ export default function ReservationCalendar() {
         };
       }
       case "full":
+        if (canBeCheckout) {
+          return {
+            cell: "bg-white p-2 h-20 flex flex-col items-center cursor-pointer border-2 border-dashed border-stone-300 hover:border-[#2D4030] hover:bg-stone-50 transition-all",
+            text: "text-stone-500",
+            price: "",
+            priceCls: "",
+            badge: "OUT可",
+            badgeCls: "text-[10px] mt-1 text-emerald-600 font-medium",
+          };
+        }
         return {
           cell: "bg-white p-2 h-20 flex flex-col items-center opacity-40 cursor-not-allowed",
           text: "text-gray-400",
@@ -368,6 +413,16 @@ export default function ReservationCalendar() {
           badgeCls: "text-[10px] mt-1 text-red-400",
         };
       case "exclusive":
+        if (canBeCheckout) {
+          return {
+            cell: "bg-purple-50 p-2 h-20 flex flex-col items-center cursor-pointer border-2 border-dashed border-purple-300 hover:border-purple-600 transition-all",
+            text: "text-purple-700",
+            price: "",
+            priceCls: "",
+            badge: "OUT可",
+            badgeCls: "text-[10px] mt-1 text-emerald-600 font-medium",
+          };
+        }
         return {
           cell: "bg-purple-50 p-2 h-20 flex flex-col items-center cursor-not-allowed border border-purple-200",
           text: "text-purple-700",
@@ -386,6 +441,16 @@ export default function ReservationCalendar() {
           badgeCls: "",
         };
       case "too_far":
+        if (canBeCheckout) {
+          return {
+            cell: `${isWeekend ? "bg-rose-50 hover:bg-rose-100" : "bg-white hover:bg-stone-50"} p-2 h-20 flex flex-col items-center cursor-pointer border-2 border-dashed border-stone-300 hover:border-[#2D4030] transition-all`,
+            text: isWeekend ? "text-rose-700" : "text-stone-600",
+            price: priceLabel,
+            priceCls: `text-[9px] leading-none mt-0.5 font-medium ${isWeekend ? "text-rose-500" : "text-stone-400"}`,
+            badge: "OUT可",
+            badgeCls: "text-[10px] mt-0.5 text-emerald-600 font-medium",
+          };
+        }
         return {
           cell: "bg-stone-50 p-2 h-20 flex flex-col items-center opacity-40 cursor-not-allowed",
           text: "text-stone-400",
@@ -413,6 +478,16 @@ export default function ReservationCalendar() {
           badgeCls: "text-[9px] mt-1 text-amber-500",
         };
       case "closed":
+        if (canBeCheckout) {
+          return {
+            cell: "bg-red-50 p-2 h-20 flex flex-col items-center cursor-pointer border-2 border-dashed border-red-200 hover:border-red-400 transition-all",
+            text: "text-red-400",
+            price: "",
+            priceCls: "",
+            badge: "OUT可",
+            badgeCls: "text-[10px] mt-1 text-emerald-600 font-medium",
+          };
+        }
         return {
           cell: "bg-red-50 p-2 h-20 flex flex-col items-center opacity-40 cursor-not-allowed",
           text: "text-red-300",

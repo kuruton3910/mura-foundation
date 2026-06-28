@@ -123,6 +123,96 @@ export default function StepPersonalInfo({ error }: { error?: string }) {
             </p>
           </div>
 
+          {/* Postal code */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              郵便番号 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={8}
+              placeholder="例：123-4567"
+              className={`w-full md:w-1/2 border-2 rounded-lg p-3 outline-none transition-colors ${
+                errors.postalCode
+                  ? "border-red-400 focus:border-red-500"
+                  : "border-gray-200 focus:border-[#2D4030]"
+              }`}
+              {...register("postalCode")}
+            />
+            {errors.postalCode && (
+              <p className="mt-1 text-xs text-red-500">
+                {errors.postalCode.message}
+              </p>
+            )}
+          </div>
+
+          {/* Prefecture + City */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold mb-2">
+                都道府県 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="東京都"
+                className={`w-full border-2 rounded-lg p-3 outline-none transition-colors ${
+                  errors.prefecture
+                    ? "border-red-400 focus:border-red-500"
+                    : "border-gray-200 focus:border-[#2D4030]"
+                }`}
+                {...register("prefecture")}
+              />
+              {errors.prefecture && (
+                <p className="mt-1 text-xs text-red-500">
+                  {errors.prefecture.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-bold mb-2">
+                市区町村 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="渋谷区"
+                className={`w-full border-2 rounded-lg p-3 outline-none transition-colors ${
+                  errors.city
+                    ? "border-red-400 focus:border-red-500"
+                    : "border-gray-200 focus:border-[#2D4030]"
+                }`}
+                {...register("city")}
+              />
+              {errors.city && (
+                <p className="mt-1 text-xs text-red-500">
+                  {errors.city.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Address line */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              番地以下 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="1-2-3 ○○マンション 101"
+              className={`w-full border-2 rounded-lg p-3 outline-none transition-colors ${
+                errors.addressLine
+                  ? "border-red-400 focus:border-red-500"
+                  : "border-gray-200 focus:border-[#2D4030]"
+              }`}
+              {...register("addressLine")}
+            />
+            {errors.addressLine && (
+              <p className="mt-1 text-xs text-red-500">
+                {errors.addressLine.message}
+              </p>
+            )}
+          </div>
+
           {/* Notes */}
           <div>
             <label className="block text-sm font-bold mb-2">

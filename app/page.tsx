@@ -40,6 +40,13 @@ function validateStep3(data: ReservationFormData): string | null {
     return "有効な電話番号を入力してください（10桁以上）。";
   if (!/^\d{4}$/.test(data.vehiclePlate))
     return "車のナンバー下4桁を半角数字で入力してください。";
+  // 郵便番号: ハイフン有無どちらでも、半角数字7桁を許可
+  const postalDigits = data.postalCode.replace(/-/g, "").replace(/\s/g, "");
+  if (!/^\d{7}$/.test(postalDigits))
+    return "郵便番号を半角数字7桁で入力してください（ハイフン任意）。";
+  if (!data.prefecture.trim()) return "都道府県を入力してください。";
+  if (!data.city.trim()) return "市区町村を入力してください。";
+  if (!data.addressLine.trim()) return "番地以下を入力してください。";
   return null;
 }
 
@@ -138,14 +145,14 @@ export default function Page() {
     <FormProvider {...methods}>
       <div className="bg-[#F8F9F4] text-stone-800 font-sans min-h-screen">
         {/* Header */}
-        <header className="bg-[#2D4030] text-white py-6 shadow-md">
-          <div className="container mx-auto px-4 flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold tracking-wider">
-                NPO MURA FOUNDATION
-              </h1>
-              <p className="text-sm opacity-80">オンライン予約システム</p>
-            </div>
+        <header className="bg-[#2D4030] text-white py-4 shadow-md">
+          <div className="container mx-auto px-4 flex justify-between items-center gap-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt="MURA CAMPING GROUND"
+              className="h-12 md:h-14 w-auto object-contain"
+            />
             <div className="hidden md:block">
               <a
                 href="https://www.murafoundation.com"
