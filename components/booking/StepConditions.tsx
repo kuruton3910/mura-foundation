@@ -225,7 +225,10 @@ export default function StepConditions({ error }: { error?: string }) {
                   <ul className="list-disc list-inside space-y-0.5 ml-1">
                     <li>大人・子ども・ペットの総計 <strong>{settings.exclusive_max_persons}名まで</strong></li>
                     <li>平日 <strong>¥{settings.exclusive_fee_weekday.toLocaleString()}</strong> / 泊</li>
-                    <li>金・土・日・祝日 <strong>¥{settings.exclusive_fee_weekend.toLocaleString()}</strong> / 泊</li>
+                    <li>
+                      金・土・日・祝日・夏期（{settings.peak_season_start_month}/{settings.peak_season_start_day}〜{settings.peak_season_end_month}/{settings.peak_season_end_day}）{" "}
+                      <strong>¥{settings.exclusive_fee_weekend.toLocaleString()}</strong> / 泊
+                    </li>
                     <li className="text-amber-700">
                       {settings.exclusive_max_persons + 1}名を超える場合は追加料金が発生します。
                       <strong>直接メールでご連絡ください。</strong>

@@ -64,7 +64,8 @@ export default function ReservationActions({
             確定済みにする
           </button>
         )}
-        {currentStatus === "confirmed" && (
+        {/* pending・confirmed どちらもキャンセル可能に */}
+        {(currentStatus === "pending" || currentStatus === "confirmed") && (
           <button
             onClick={() => updateStatus("cancelled")}
             disabled={loading}

@@ -2,6 +2,16 @@ import { createServerClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ReservationActions from "./ReservationActions";
+import {
+  calcBreakdown,
+  type RentalOption,
+  type SiteFees,
+  type PersonFees,
+  type PeakSeason,
+  type ExclusiveFees,
+} from "@/lib/booking/pricing";
+import { DEFAULT_SETTINGS } from "@/lib/booking/siteSettings";
+import type { ReservationFormData } from "@/lib/booking/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +48,80 @@ export default async function ReservationDetailPage({
       new Date(reservation.checkin_date).getTime()) /
       (1000 * 60 * 60 * 24),
   );
+
+  // ── 金額の内訳を再計算（保存済みの予約データ + サイト設定から）──
+  const { data: settingsRow } = await supabase
+    .from("site_settings")
+    .select("*")
+    .eq("id", 1)
+    .single();
+  const s = { ...DEFAULT_SETTINGS, ...(settingsRow ?? {}) };
+
+  const siteFees: SiteFees = {
+    weekday: s.site_fee_weekday,
+    weekend: s.site_fee_weekend,
+  };
+  const personFees: PersonFees = {
+    includedPersonsPerSite: s.included_persons_per_site,
+    extraPersonFeePerNight: s.extra_person_fee_per_night,
+  };
+  const peakSeason: PeakSeason = {
+    startMonth: s.peak_season_start_month,
+    startDay: s.peak_season_start_day,
+    endMonth: s.peak_season_end_month,
+    endDay: s.peak_season_end_day,
+  };
+  const exclusiveFees: ExclusiveFees = {
+    weekday: s.exclusive_fee_weekday,
+    weekend: s.exclusive_fee_weekend,
+    maxPersons: s.exclusive_max_persons,
+  };
+
+  // selected_options（jsonb）から options 配列と optionCounts を復元
+  type StoredOption = {
+    id: string;
+    name: string;
+    count: number;
+    unit_label: string;
+    price_per_unit: number;
+  };
+  const storedOptions: StoredOption[] = Array.isArray(reservation.selected_options)
+    ? reservation.selected_options
+    : [];
+  const optionCounts: Record<string, number> = {};
+  const optionsForCalc: RentalOption[] = storedOptions.map((o) => {
+    optionCounts[o.id] = o.count;
+    return {
+      id: o.id,
+      name: o.name,
+      price_per_unit: o.price_per_unit,
+      unit_label: o.unit_label,
+      max_count: 99,
+    };
+  });
+
+  const [cy, cm, cd] = reservation.checkin_date.split("-").map(Number);
+  const [oy, om, od] = reservation.checkout_date.split("-").map(Number);
+  const breakdownData = {
+    checkinDate: new Date(cy, cm - 1, cd),
+    checkoutDate: new Date(oy, om - 1, od),
+    vehicleCount: reservation.vehicle_count,
+    adults: reservation.adults,
+    children: reservation.children,
+    pets: reservation.pets,
+    isExclusive: reservation.is_exclusive,
+    optionCounts,
+  } as ReservationFormData;
+
+  const breakdown = calcBreakdown(
+    breakdownData,
+    optionsForCalc,
+    siteFees,
+    personFees,
+    peakSeason,
+    exclusiveFees,
+  );
+  const discountAmount = reservation.discount_amount ?? 0;
 
   return (
     <div className="p-8 max-w-3xl">
@@ -139,6 +223,41 @@ export default async function ReservationDetailPage({
           <h2 className="font-bold text-stone-700 mb-4 border-l-4 border-[#2D4030] pl-3">
             決済情報
           </h2>
+          {/* 金額内訳 */}
+          {breakdown.length > 0 && (
+            <div className="mb-4 rounded-lg border border-stone-200 overflow-hidden">
+              <table className="w-full text-sm">
+                <tbody className="divide-y divide-stone-100">
+                  {breakdown.map((item, i) => (
+                    <tr key={i}>
+                      <td className="px-4 py-2 text-stone-600">{item.label}</td>
+                      <td className="px-4 py-2 text-right font-medium text-stone-800 whitespace-nowrap">
+                        ¥{item.amount.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                  {discountAmount > 0 && (
+                    <tr className="text-emerald-700">
+                      <td className="px-4 py-2">
+                        クーポン割引
+                        {reservation.coupon_code ? `（${reservation.coupon_code}）` : ""}
+                      </td>
+                      <td className="px-4 py-2 text-right font-medium whitespace-nowrap">
+                        -¥{discountAmount.toLocaleString()}
+                      </td>
+                    </tr>
+                  )}
+                  <tr className="bg-stone-50">
+                    <td className="px-4 py-2 font-bold text-stone-800">合計（税込）</td>
+                    <td className="px-4 py-2 text-right font-bold text-[#2D4030] whitespace-nowrap">
+                      ¥{reservation.total_amount?.toLocaleString()}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <InfoRow
               label="合計金額"

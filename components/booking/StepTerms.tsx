@@ -10,6 +10,32 @@ import {
 
 const TOTAL_GROUPS_FALLBACK = DEFAULT_TERM_GROUPS.length;
 
+// 規約テキスト内の「宿泊約款」を別タブで開くPDFリンクに変換する
+const YAKKAN_URL =
+  "https://www.murafoundation.com/_files/ugd/585d3b_fdccc03ba4bc43f3970899c9845e0dc0.pdf";
+const YAKKAN_KEYWORD = "宿泊約款";
+
+function renderTermText(term: string) {
+  if (!term.includes(YAKKAN_KEYWORD)) return term;
+  // キーワードで分割し、キーワード部分だけリンクにする
+  const parts = term.split(YAKKAN_KEYWORD);
+  return parts.map((part, i) => (
+    <span key={i}>
+      {part}
+      {i < parts.length - 1 && (
+        <a
+          href={YAKKAN_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#2D4030] font-bold underline hover:no-underline"
+        >
+          {YAKKAN_KEYWORD}
+        </a>
+      )}
+    </span>
+  ));
+}
+
 export default function StepTerms({ error }: { error?: string }) {
   const { setValue } = useFormContext<ReservationFormData>();
   const [termGroups, setTermGroups] =
@@ -154,7 +180,7 @@ export default function StepTerms({ error }: { error?: string }) {
                           {termIndex + 1}
                         </span>
                         <p className="text-sm text-stone-700 leading-relaxed">
-                          {term}
+                          {renderTermText(term)}
                         </p>
                       </div>
                     ))}

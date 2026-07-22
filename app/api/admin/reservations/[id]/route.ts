@@ -1,19 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 
-// YYYY-MM-DD文字列のまま日付を1日ずつ進める（タイムゾーンずれ防止）
-function getDateRange(checkin: string, checkout: string): string[] {
-  const dates: string[] = [];
-  let cur = checkin;
-  while (cur < checkout) {
-    dates.push(cur);
-    const [y, m, d] = cur.split("-").map(Number);
-    const next = new Date(Date.UTC(y, m - 1, d + 1));
-    cur = next.toISOString().split("T")[0];
-  }
-  return dates;
-}
-
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -33,10 +20,10 @@ export async function PATCH(
       );
     }
 
-    // 現在の予約情報を取得（枠の戻し処理用）
+    // 予約の存在確認
     const { data: reservation } = await supabase
       .from("reservations")
-      .select("*")
+      .select("id")
       .eq("id", id)
       .single();
 
@@ -44,42 +31,15 @@ export async function PATCH(
       return NextResponse.json({ error: "予約が見つかりません" }, { status: 404 });
     }
 
-    const prevStatus = reservation.status;
-
     // ステータス更新
+    // 空き枠（daily_availability）は reservations を集計する VIEW のため、
+    // ステータスを cancelled/refunded にすれば自動で枠が戻る（手動更新は不要・VIEWは更新不可）
     const { error } = await supabase
       .from("reservations")
       .update({ status })
       .eq("id", id);
 
     if (error) throw error;
-
-    // confirmed → cancelled/refunded の場合、空き枠を戻す
-    if (prevStatus === "confirmed" && (status === "cancelled" || status === "refunded")) {
-      const stayDates = getDateRange(reservation.checkin_date, reservation.checkout_date);
-      const sites = reservation.vehicle_count || 1;
-
-      for (const dateStr of stayDates) {
-        const { data: existing } = await supabase
-          .from("daily_availability")
-          .select("booked_sites, available_sites, max_sites")
-          .eq("date", dateStr)
-          .single();
-
-        if (existing) {
-          await supabase
-            .from("daily_availability")
-            .update({
-              booked_sites: Math.max(0, (existing.booked_sites ?? 0) - sites),
-              available_sites: Math.min(
-                existing.max_sites ?? 5,
-                (existing.available_sites ?? 0) + sites,
-              ),
-            })
-            .eq("date", dateStr);
-        }
-      }
-    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
