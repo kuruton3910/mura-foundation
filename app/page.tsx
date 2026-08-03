@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -30,6 +30,25 @@ function validateStep2(data: ReservationFormData): string | null {
   return null;
 }
 
+type ApiJson = {
+  error?: string;
+  reservationId?: string;
+  checkoutUrl?: string;
+};
+
+/**
+ * レスポンスをJSONとして安全に読む。
+ * サーバー側がタイムアウトしてHTMLを返した場合でも throw せず null を返すため、
+ * 「通信エラー」で潰れず本来のエラー内容を出せる。
+ */
+async function safeJson(res: Response): Promise<ApiJson | null> {
+  try {
+    return (await res.json()) as ApiJson;
+  } catch {
+    return null;
+  }
+}
+
 function validateStep3(data: ReservationFormData): string | null {
   if (!data.guestName.trim()) return "お名前を入力してください。";
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -54,6 +73,16 @@ export default function Page() {
   const [currentStep, setCurrentStep] = useState(1);
   const [stepError, setStepError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // このブラウザのこの予約操作を識別する鍵。
+  // 通信タイムアウト後に再送しても同じ値を送るので重複予約を防げる。
+  // 推測不可能なので、他人の予約を引き当てることはできない。
+  const submissionIdRef = useRef<string>("");
+  if (!submissionIdRef.current) {
+    submissionIdRef.current =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+  }
 
   const methods = useForm<ReservationFormData>({
     resolver: zodResolver(reservationSchema),
@@ -96,6 +125,9 @@ export default function Page() {
     setStepError(null);
     setIsSubmitting(true);
 
+    // 決済ページへ遷移する場合は、遷移中に再送信されないようボタンを戻さない
+    let redirecting = false;
+
     try {
       // 日付はローカルTZ基準のYYYY-MM-DD文字列に変換してから送信
       // （Date.toISOString()はUTC変換され、JST midnightだと前日にずれるため）
@@ -103,6 +135,8 @@ export default function Page() {
         ...data,
         checkinDate: data.checkinDate ? toDateStr(data.checkinDate) : null,
         checkoutDate: data.checkoutDate ? toDateStr(data.checkoutDate) : null,
+        // 再送を判定するための鍵（このブラウザ・この予約操作でのみ有効）
+        submissionId: submissionIdRef.current,
       };
 
       // 1. pending 予約を作成
@@ -111,13 +145,16 @@ export default function Page() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!reservationRes.ok) {
-        const { error: msg } = await reservationRes.json();
-        setStepError(msg || "予約の作成に失敗しました");
+      const reservationJson = await safeJson(reservationRes);
+      if (!reservationRes.ok || !reservationJson?.reservationId) {
+        setStepError(
+          reservationJson?.error ||
+            "予約の作成に失敗しました。時間をおいてもう一度お試しください。",
+        );
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
-      const { reservationId } = await reservationRes.json();
+      const { reservationId } = reservationJson;
 
       // 2. Stripe Checkout セッションを作成してリダイレクト
       const checkoutRes = await fetch("/api/checkout", {
@@ -125,19 +162,32 @@ export default function Page() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reservationId }),
       });
+      const checkoutJson = await safeJson(checkoutRes);
       if (!checkoutRes.ok) {
-        const { error: msg } = await checkoutRes.json();
-        setStepError(msg || "決済セッションの作成に失敗しました");
+        setStepError(
+          checkoutJson?.error ||
+            "決済ページの準備に失敗しました。時間をおいてもう一度お試しください。",
+        );
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
-      const { checkoutUrl } = await checkoutRes.json();
+      // checkoutUrl が取れないまま遷移すると真っ白な画面になるため必ず検証する
+      const checkoutUrl = checkoutJson?.checkoutUrl;
+      if (typeof checkoutUrl !== "string" || !checkoutUrl) {
+        setStepError(
+          "決済ページのURLを取得できませんでした。時間をおいてもう一度お試しください。",
+        );
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      redirecting = true;
       window.location.href = checkoutUrl;
     } catch {
       setStepError("通信エラーが発生しました。もう一度お試しください。");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
-      setIsSubmitting(false);
+      if (!redirecting) setIsSubmitting(false);
     }
   }
 
@@ -147,12 +197,22 @@ export default function Page() {
         {/* Header */}
         <header className="bg-white border-b border-stone-200 shadow-sm py-4 md:py-5">
           <div className="container mx-auto px-4 flex justify-between items-center gap-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo.png"
-              alt="MURA FOUNDATION"
-              className="h-12 sm:h-16 md:h-20 lg:h-24 w-auto object-contain"
-            />
+            {/* アイコンマーク＋ワードマークを並べて左上に配置 */}
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icon-mark.png"
+                alt=""
+                aria-hidden="true"
+                className="h-10 sm:h-12 md:h-14 w-auto object-contain shrink-0"
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo.png"
+                alt="MURA FOUNDATION"
+                className="h-10 sm:h-12 md:h-16 w-auto object-contain min-w-0"
+              />
+            </div>
             <div className="hidden md:block">
               <a
                 href="https://www.murafoundation.com"

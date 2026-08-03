@@ -25,42 +25,51 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    if (body.id) {
-      const { data, error } = await supabase
-        .from("rental_options")
-        .update({
-          name: body.name,
-          description: body.description ?? "",
-          price_per_unit: body.price_per_unit,
-          unit_label: body.unit_label ?? "個",
-          max_count: body.max_count ?? 5,
-          is_active: body.is_active ?? true,
-          sort_order: body.sort_order ?? 0,
-          is_exclusive_only: body.is_exclusive_only ?? false,
-        })
-        .eq("id", body.id)
-        .select()
-        .single();
+    // 作成・更新で同じ値を使う（片方だけ項目が漏れる事故を防ぐ）
+    const payload: Record<string, unknown> = {
+      name: body.name,
+      description: body.description ?? "",
+      price_per_unit: body.price_per_unit,
+      unit_label: body.unit_label ?? "個",
+      max_count: body.max_count ?? 5,
+      is_active: body.is_active ?? true,
+      sort_order: body.sort_order ?? 0,
+      is_exclusive_only: body.is_exclusive_only ?? false,
+      image_url: (body.image_url ?? "").trim(),
+    };
+
+    const save = (data: Record<string, unknown>) =>
+      body.id
+        ? supabase
+            .from("rental_options")
+            .update(data)
+            .eq("id", body.id)
+            .select()
+            .single()
+        : supabase.from("rental_options").insert(data).select().single();
+
+    let { data, error } = await save(payload);
+
+    // image_url カラムが未追加のDBでも他項目は保存できるようフォールバックする
+    if (error?.code === "PGRST204") {
+      console.warn(
+        "rental_options.image_url が存在しないため写真URLを除いて保存します（ALTER TABLE が必要）",
+      );
+      const { image_url: _omitted, ...withoutImage } = payload;
+      ({ data, error } = await save(withoutImage));
       if (error) throw error;
-      return NextResponse.json(data);
+      return NextResponse.json(
+        {
+          ...data,
+          warning:
+            "写真URLは保存されませんでした。データベースに image_url カラムを追加してください。",
+        },
+        { status: body.id ? 200 : 201 },
+      );
     }
 
-    const { data, error } = await supabase
-      .from("rental_options")
-      .insert({
-        name: body.name,
-        description: body.description ?? "",
-        price_per_unit: body.price_per_unit,
-        unit_label: body.unit_label ?? "個",
-        max_count: body.max_count ?? 5,
-        is_active: body.is_active ?? true,
-        sort_order: body.sort_order ?? 0,
-        is_exclusive_only: body.is_exclusive_only ?? false,
-      })
-      .select()
-      .single();
     if (error) throw error;
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(data, { status: body.id ? 200 : 201 });
   } catch (err) {
     console.error("options upsert error:", err);
     return NextResponse.json({ error: "保存に失敗しました" }, { status: 500 });

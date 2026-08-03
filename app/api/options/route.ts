@@ -10,9 +10,11 @@ export async function GET(request: NextRequest) {
     const isExclusive = searchParams.get("exclusive") === "true";
 
     const supabase = createServerClient();
+    // select("*") にすることで image_url カラムが未追加のDBでも 500 にならない。
+    // （カラム名を明示すると未追加時に PGRST204 で落ち、予約画面が全滅する）
     let query = supabase
       .from("rental_options")
-      .select("id, name, description, price_per_unit, unit_label, max_count, is_exclusive_only")
+      .select("*")
       .eq("is_active", true)
       .order("sort_order");
 

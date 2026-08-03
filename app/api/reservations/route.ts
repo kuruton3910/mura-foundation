@@ -63,15 +63,14 @@ export async function POST(request: NextRequest) {
     if (!isExclusive) {
       optionsQuery = optionsQuery.eq("is_exclusive_only", false);
     }
-    const { data: optionsData } = await optionsQuery;
-    const options: RentalOption[] = optionsData ?? [];
 
-    // ── サイト設定をDBから取得 ────────────────────────────────────────
-    const { data: settingsData } = await supabase
-      .from("site_settings")
-      .select("*")
-      .eq("id", 1)
-      .single();
+    // ── オプション・サイト設定を並列取得（直列だと遅くタイムアウトの原因になる）──
+    const [optionsRes, settingsRes] = await Promise.all([
+      optionsQuery,
+      supabase.from("site_settings").select("*").eq("id", 1).single(),
+    ]);
+    const options: RentalOption[] = optionsRes.data ?? [];
+    const settingsData = settingsRes.data;
     const settings = { ...DEFAULT_SETTINGS, ...(settingsData ?? {}) };
 
     // ── 最大連泊数チェック ───────────────────────────────────────────
@@ -212,34 +211,74 @@ export async function POST(request: NextRequest) {
     // 空き状況の確認
     const checkinStr = checkinRaw;
     const checkoutStr = checkoutRaw;
+    const guestEmailNormalized = body.guestEmail.trim().toLowerCase();
+    // ブラウザ側で生成される推測不可能な鍵。再送の判定にのみ使う
+    const rawSubmissionId = (body as { submissionId?: unknown }).submissionId;
+    const submissionId =
+      typeof rawSubmissionId === "string" &&
+      /^[a-zA-Z0-9-]{16,64}$/.test(rawSubmissionId)
+        ? rawSubmissionId
+        : null;
 
-    const { data: availability, error: availError } = await supabase
-      .from("daily_availability")
-      .select("date, available_sites, booked_sites, max_sites, is_closed")
-      .gte("date", checkinStr)
-      .lt("date", checkoutStr);
+    // ── 空き状況・手動貸切・既存貸切・重複予約を並列取得 ──────────────
+    // 直列だと往復が積み上がり、Netlifyの実行時間制限に当たって
+    // 「行はinsert済みなのにクライアントはエラー→再送で重複」が起きるため
+    const THIRTY_MIN_AGO = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const [
+      availabilityRes,
+      manualBlocksRes,
+      existingExclusiveRes,
+      duplicateRes,
+    ] = await Promise.all([
+      supabase
+        .from("daily_availability")
+        .select("date, available_sites, booked_sites, max_sites, is_closed")
+        .gte("date", checkinStr)
+        .lt("date", checkoutStr),
+      supabase
+        .from("availability_overrides")
+        .select("date")
+        .eq("is_exclusive_blocked", true)
+        .gte("date", checkinStr)
+        .lt("date", checkoutStr),
+      supabase
+        .from("reservations")
+        .select("checkin_date, checkout_date")
+        .eq("is_exclusive", true)
+        .in("status", ["pending", "confirmed"])
+        .lte("checkin_date", checkoutStr)
+        .gt("checkout_date", checkinStr),
+      // 再送による重複の候補。
+      // submissionId（ブラウザ側で生成する推測不可能な鍵）で絞ることで、
+      // メールアドレスと日程を知っているだけの第三者が
+      // 他人の予約IDを引き出せないようにしている。
+      submissionId
+        ? supabase
+            .from("reservations")
+            .select(
+              "id, total_amount, vehicle_count, adults, children, pets, is_exclusive, coupon_code, selected_options",
+            )
+            .eq("submission_id", submissionId)
+            .eq("guest_email", guestEmailNormalized)
+            .eq("checkin_date", checkinStr)
+            .eq("checkout_date", checkoutStr)
+            .eq("status", "pending")
+            .gte("created_at", THIRTY_MIN_AGO)
+            .order("created_at", { ascending: false })
+            .limit(5)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
 
-    if (availError) throw availError;
+    const availability = availabilityRes.data;
+    if (availabilityRes.error) throw availabilityRes.error;
 
-    // 管理者が手動で「貸切」マークした日も取得（他チャンネル経由の貸切予約用）
-    const { data: manualExclusiveBlocks } = await supabase
-      .from("availability_overrides")
-      .select("date")
-      .eq("is_exclusive_blocked", true)
-      .gte("date", checkinStr)
-      .lt("date", checkoutStr);
     const manualExclusiveSet = new Set<string>(
-      (manualExclusiveBlocks ?? []).map((r) => r.date as string),
+      (manualBlocksRes.data ?? []).map((r) => r.date as string),
     );
 
-    // 既存の貸切予約（pending or confirmed）が入っている日を取得
-    const { data: existingExclusiveReservations } = await supabase
-      .from("reservations")
-      .select("checkin_date, checkout_date")
-      .eq("is_exclusive", true)
-      .in("status", ["pending", "confirmed"])
-      .lte("checkin_date", checkoutStr)
-      .gt("checkout_date", checkinStr);
+    const existingExclusiveReservations = existingExclusiveRes.data;
+
+    const duplicateCandidates = duplicateRes.data ?? [];
     const existingExclusiveSet = new Set<string>();
     for (const r of existingExclusiveReservations ?? []) {
       let cur = r.checkin_date as string;
@@ -311,6 +350,53 @@ export async function POST(request: NextRequest) {
       curDate = next.toISOString().split("T")[0];
     }
 
+    // ── 選択されたオプションをJSONBとして整形 ─────────────────────────
+    const optionCounts = body.optionCounts ?? {};
+    const selectedOptions = options
+      .filter((opt) => (optionCounts[opt.id] ?? 0) > 0)
+      .map((opt) => ({
+        id: opt.id,
+        name: opt.name,
+        count: optionCounts[opt.id],
+        unit_label: opt.unit_label,
+        price_per_unit: opt.price_per_unit,
+        subtotal: optionCounts[opt.id] * opt.price_per_unit,
+      }));
+
+    // ── 重複予約の再利用 ──────────────────────────────────────────────
+    // 通信タイムアウト後の再送で予約が二重に作られたり、
+    // クーポンの used_count が二重に消費されるのを防ぐ。
+    // ただし「日程だけ同じで内容が違う」場合は別の予約なので再利用してはいけない
+    // （区画数や人数の変更が無視され、お客様の意図と違う予約になってしまうため）。
+    const requestedCoupon = body.couponCode?.trim().toUpperCase() || null;
+    const optionSignature = (opts: unknown) =>
+      JSON.stringify(
+        (Array.isArray(opts) ? opts : [])
+          .map((o) => `${(o as { id?: string }).id}:${(o as { count?: number }).count}`)
+          .sort(),
+      );
+    const requestedSignature = optionSignature(selectedOptions);
+
+    const duplicate = duplicateCandidates.find(
+      (c) =>
+        c.vehicle_count === body.vehicleCount &&
+        c.adults === body.adults &&
+        c.children === body.children &&
+        c.pets === body.pets &&
+        c.is_exclusive === isExclusive &&
+        (c.coupon_code ?? null) === requestedCoupon &&
+        optionSignature(c.selected_options) === requestedSignature,
+    );
+
+    if (duplicate) {
+      console.log(`duplicate pending reservation reused: ${duplicate.id}`);
+      return NextResponse.json({
+        reservationId: duplicate.id,
+        totalAmount: duplicate.total_amount,
+        reused: true,
+      });
+    }
+
     // 合計金額の計算（サーバー側で再計算してフロントの改ざん防止）
     const formDataWithDates = {
       ...body,
@@ -373,25 +459,11 @@ export async function POST(request: NextRequest) {
 
     const totalAmount = Math.max(0, baseTotal - discountAmount);
 
-    // ── 選択されたオプションをJSONBとして整形 ─────────────────────────
-    const optionCounts = body.optionCounts ?? {};
-    const selectedOptions = options
-      .filter((opt) => (optionCounts[opt.id] ?? 0) > 0)
-      .map((opt) => ({
-        id: opt.id,
-        name: opt.name,
-        count: optionCounts[opt.id],
-        unit_label: opt.unit_label,
-        price_per_unit: opt.price_per_unit,
-        subtotal: optionCounts[opt.id] * opt.price_per_unit,
-      }));
-
     // 予約を pending で作成
-    const { data: reservation, error: insertError } = await supabase
-      .from("reservations")
-      .insert({
+    const insertPayload: Record<string, unknown> = {
         guest_name: body.guestName.trim(),
-        guest_email: body.guestEmail.trim().toLowerCase(),
+        guest_email: guestEmailNormalized,
+        submission_id: submissionId,
         guest_phone: body.guestPhone.trim(),
         vehicle_plate: body.vehiclePlate.trim(),
         postal_code: postalDigits.slice(0, 3) + "-" + postalDigits.slice(3),
@@ -413,13 +485,28 @@ export async function POST(request: NextRequest) {
         terms_agreed_at: new Date().toISOString(),
         status: "pending",
         is_exclusive: isExclusive,
-      })
-      .select("id")
-      .single();
+    };
+
+    const insertReservation = (data: Record<string, unknown>) =>
+      supabase.from("reservations").insert(data).select("id").single();
+
+    let { data: reservation, error: insertError } =
+      await insertReservation(insertPayload);
+
+    // submission_id カラムが未追加のDBでも予約自体は成立させる
+    // （本番稼働中にデプロイ順序で予約が全滅するのを防ぐ）
+    if (insertError?.code === "PGRST204") {
+      console.warn(
+        "reservations.submission_id が存在しません。重複防止を無効にして予約を作成します（ALTER TABLE が必要）",
+      );
+      const { submission_id: _omitted, ...withoutSubmissionId } = insertPayload;
+      ({ data: reservation, error: insertError } =
+        await insertReservation(withoutSubmissionId));
+    }
 
     if (insertError) throw insertError;
 
-    return NextResponse.json({ reservationId: reservation.id, totalAmount });
+    return NextResponse.json({ reservationId: reservation!.id, totalAmount });
   } catch (err) {
     console.error("reservation create error:", err);
     return NextResponse.json(

@@ -13,6 +13,18 @@ import { isWeekendNight, type PeakSeason } from "@/lib/booking/pricing";
 const DOW_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 const LOW_SPOTS_THRESHOLD = 3;
 
+// 予約できない日は理由に関わらず同じグレーで表現し、理由は文字バッジで示す。
+// （状態ごとに色を変えると情報量が増えるだけで「押せない」ことが伝わりにくい）
+const unavailableBadge = "text-[10px] mt-1 text-stone-500";
+const unavailableCell = () => ({
+  cell: "bg-stone-100 p-2 h-20 flex flex-col items-center cursor-not-allowed",
+  text: "text-stone-400",
+  price: "",
+  priceCls: "",
+  badge: "",
+  badgeCls: unavailableBadge,
+});
+
 function isSameDay(a: Date, b: Date) {
   return (
     a.getFullYear() === b.getFullYear() &&
@@ -404,14 +416,7 @@ export default function ReservationCalendar() {
             badgeCls: "text-[10px] mt-1 text-emerald-600 font-medium",
           };
         }
-        return {
-          cell: "bg-white p-2 h-20 flex flex-col items-center opacity-40 cursor-not-allowed",
-          text: "text-gray-400",
-          price: "",
-          priceCls: "",
-          badge: "×",
-          badgeCls: "text-[10px] mt-1 text-red-400",
-        };
+        return { ...unavailableCell(), badge: "満室", badgeCls: unavailableBadge };
       case "exclusive":
         if (canBeCheckout) {
           return {
@@ -424,17 +429,14 @@ export default function ReservationCalendar() {
           };
         }
         return {
-          cell: "bg-purple-50 p-2 h-20 flex flex-col items-center cursor-not-allowed border border-purple-200",
-          text: "text-purple-700",
-          price: "",
-          priceCls: "",
+          ...unavailableCell(),
           badge: "貸切",
-          badgeCls: "text-[10px] mt-1 text-purple-700 font-bold",
+          badgeCls: "text-[10px] mt-1 text-purple-600 font-bold",
         };
       case "past":
         return {
-          cell: "bg-white p-2 h-20 flex flex-col items-center opacity-25 cursor-not-allowed",
-          text: "text-gray-400",
+          cell: "bg-stone-100 p-2 h-20 flex flex-col items-center cursor-not-allowed",
+          text: "text-stone-300",
           price: "",
           priceCls: "",
           badge: "",
@@ -452,30 +454,21 @@ export default function ReservationCalendar() {
           };
         }
         return {
-          cell: "bg-stone-50 p-2 h-20 flex flex-col items-center opacity-40 cursor-not-allowed",
-          text: "text-stone-400",
-          price: "",
-          priceCls: "",
+          ...unavailableCell(),
           badge: "受付前",
-          badgeCls: "text-[9px] mt-1 text-stone-400",
+          badgeCls: unavailableBadge,
         };
       case "pre_season":
         return {
-          cell: "bg-blue-50 p-2 h-20 flex flex-col items-center opacity-40 cursor-not-allowed",
-          text: "text-blue-300",
-          price: "",
-          priceCls: "",
+          ...unavailableCell(),
           badge: "準備中",
-          badgeCls: "text-[9px] mt-1 text-blue-400",
+          badgeCls: unavailableBadge,
         };
       case "post_season":
         return {
-          cell: "bg-amber-50 p-2 h-20 flex flex-col items-center opacity-50 cursor-not-allowed",
-          text: "text-amber-600",
-          price: "",
-          priceCls: "",
+          ...unavailableCell(),
           badge: "NAKAMA",
-          badgeCls: "text-[9px] mt-1 text-amber-500",
+          badgeCls: unavailableBadge,
         };
       case "closed":
         if (canBeCheckout) {
@@ -489,19 +482,13 @@ export default function ReservationCalendar() {
           };
         }
         return {
-          cell: "bg-red-50 p-2 h-20 flex flex-col items-center opacity-40 cursor-not-allowed",
-          text: "text-red-300",
-          price: "",
-          priceCls: "",
+          ...unavailableCell(),
           badge: "休業",
-          badgeCls: "text-[9px] mt-1 text-red-400",
+          badgeCls: "text-[10px] mt-1 text-red-500 font-medium",
         };
       default:
         return {
-          cell: "bg-white p-2 h-20 flex flex-col items-center opacity-30 cursor-not-allowed",
-          text: "text-gray-400",
-          price: "",
-          priceCls: "",
+          ...unavailableCell(),
           badge: "",
           badgeCls: "",
         };
@@ -637,32 +624,37 @@ export default function ReservationCalendar() {
         })}
       </div>
 
-      <div className="p-3 bg-stone-50 border-t flex flex-wrap gap-3 text-xs text-stone-500">
-        <span className="flex items-center gap-1">
+      {/*
+        凡例は「色を見ないと分からないもの」だけに絞る。
+        貸切・NAKAMA限定・休業はセル内に文字が出るので凡例に載せない（情報過多になるため）
+      */}
+      <div className="p-3 bg-stone-50 border-t flex flex-wrap gap-x-4 gap-y-2 text-xs text-stone-600">
+        <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 bg-[#2D4030] rounded inline-block" /> 選択中
         </span>
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-3 bg-emerald-100 border border-[#2D4030] rounded inline-block" />{" "}
-          範囲内
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 bg-white border border-stone-300 rounded inline-block" />
+          平日{" "}
+          <span className="font-medium text-stone-700">
+            ¥{settings.site_fee_weekday.toLocaleString()}
+          </span>
         </span>
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-3 bg-white border border-gray-300 rounded inline-block" />{" "}
-          平日 <span className="text-stone-500">¥{settings.site_fee_weekday.toLocaleString()}</span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 bg-rose-50 border border-rose-300 rounded inline-block" />
+          週末・祝日・夏期{" "}
+          <span className="font-medium text-rose-600">
+            ¥{settings.site_fee_weekend.toLocaleString()}
+          </span>
         </span>
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-3 bg-rose-50 border border-rose-200 rounded inline-block" />{" "}
-          週末・祝日・ピーク <span className="text-rose-500 font-medium">¥{settings.site_fee_weekend.toLocaleString()}</span>
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-3 bg-amber-50 border border-amber-200 rounded inline-block" />{" "}
-          NAKAMA限定
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-3 bg-purple-50 border border-purple-200 rounded inline-block" />{" "}
-          貸切予約済
-        </span>
-        <span className="flex items-center gap-1 opacity-40">
-          <span className="w-3 h-3 bg-gray-200 rounded inline-block" /> 予約不可
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 bg-stone-200 border border-stone-300 rounded inline-block relative">
+            <span className="absolute inset-0 flex items-center justify-center text-[9px] text-stone-500 leading-none">
+              ×
+            </span>
+          </span>
+          <span className="text-stone-600">
+            薄いグレーの日は予約できません
+          </span>
         </span>
       </div>
 

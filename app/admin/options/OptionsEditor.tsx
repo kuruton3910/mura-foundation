@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 type RentalOption = {
   id?: string;
@@ -12,6 +12,7 @@ type RentalOption = {
   is_active: boolean;
   sort_order: number;
   is_exclusive_only: boolean;
+  image_url: string;
 };
 
 const EMPTY_OPTION: RentalOption = {
@@ -23,6 +24,7 @@ const EMPTY_OPTION: RentalOption = {
   is_active: true,
   sort_order: 0,
   is_exclusive_only: false,
+  image_url: "",
 };
 
 export default function OptionsEditor() {
@@ -36,15 +38,61 @@ export default function OptionsEditor() {
     text: string;
   } | null>(null);
 
+  // 編集フォームは一覧の下に出るため、開いたら自動でスクロールする
+  const formRef = useRef<HTMLDivElement | null>(null);
+  // 画像アップロード
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // 同じファイルを続けて選べるように input の値をリセットしておく
+    e.target.value = "";
+    if (!file) return;
+
+    setUploading(true);
+    setUploadError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/admin/options/upload", {
+        method: "POST",
+        body: fd,
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.url) {
+        setUploadError(json?.error ?? "アップロードに失敗しました");
+        return;
+      }
+      setForm((prev) => ({ ...prev, image_url: json.url }));
+    } catch {
+      setUploadError("通信エラーが発生しました。もう一度お試しください。");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   useEffect(() => {
     fetchOptions();
   }, []);
+
+  useEffect(() => {
+    if (editingIndex !== null) {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [editingIndex]);
 
   async function fetchOptions() {
     setLoading(true);
     const res = await fetch("/api/admin/options");
     const data = await res.json();
-    setOptions(Array.isArray(data) ? data : []);
+    // DB が null を返す場合があるので入力欄用に空文字へ正規化する
+    setOptions(
+      Array.isArray(data)
+        ? data.map((o: RentalOption) => ({ ...o, image_url: o.image_url ?? "" }))
+        : [],
+    );
     setLoading(false);
   }
 
@@ -151,6 +199,20 @@ export default function OptionsEditor() {
               opt.is_active ? "border-stone-200" : "border-stone-100 opacity-50"
             }`}
           >
+            {opt.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={opt.image_url}
+                alt={opt.name}
+                className="h-14 w-14 object-cover rounded-lg border border-stone-200 shrink-0"
+              />
+            ) : (
+              <div className="h-14 w-14 rounded-lg border border-dashed border-stone-300 shrink-0 flex items-center justify-center text-[10px] text-stone-400 text-center leading-tight">
+                写真
+                <br />
+                なし
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-stone-800">{opt.name}</span>
@@ -219,7 +281,10 @@ export default function OptionsEditor() {
 
       {/* Edit / Add form */}
       {editingIndex !== null && (
-        <div className="bg-stone-50 border border-stone-200 rounded-xl p-6 space-y-4">
+        <div
+          ref={formRef}
+          className="bg-stone-50 border-2 border-[#2D4030] rounded-xl p-6 space-y-4 scroll-mt-4"
+        >
           <h3 className="font-bold text-stone-800">
             {editingIndex === -1 ? "オプションを追加" : "オプションを編集"}
           </h3>
@@ -251,6 +316,79 @@ export default function OptionsEditor() {
                 placeholder="例：ファミリーテント、前室付き"
                 className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4030]/40"
               />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-stone-600 mb-1">
+                写真（任意）
+              </label>
+
+              <div className="flex items-start gap-4">
+                {/* プレビュー */}
+                {form.image_url.trim() !== "" ? (
+                  <div className="relative shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={form.image_url}
+                      alt="プレビュー"
+                      className="h-28 w-28 object-cover rounded-lg border border-stone-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, image_url: "" })}
+                      title="写真を外す"
+                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-white border border-stone-300 text-stone-500 text-xs shadow hover:bg-stone-100"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <div className="h-28 w-28 shrink-0 rounded-lg border-2 border-dashed border-stone-300 flex items-center justify-center text-xs text-stone-400">
+                    写真なし
+                  </div>
+                )}
+
+                <div className="flex-1 min-w-0">
+                  {/* ファイル選択（パソコン・スマホの写真から直接アップロード）*/}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="px-4 py-2 bg-[#2D4030] text-white text-sm font-bold rounded-lg hover:bg-[#2D4030]/80 transition-colors disabled:opacity-50"
+                  >
+                    {uploading ? "アップロード中..." : "画像を選ぶ"}
+                  </button>
+                  <p className="text-xs text-stone-400 mt-1.5">
+                    パソコン・スマホの写真をそのまま選べます（JPEG/PNG/WebP/GIF・5MBまで）。
+                  </p>
+                  {uploadError && (
+                    <p className="text-xs text-red-600 mt-1">{uploadError}</p>
+                  )}
+
+                  {/* URL直接入力（既存サイトの画像を使いたい場合のフォールバック）*/}
+                  <details className="mt-3">
+                    <summary className="text-xs text-stone-500 cursor-pointer hover:text-stone-700">
+                      画像URLを直接入力する
+                    </summary>
+                    <input
+                      type="url"
+                      value={form.image_url}
+                      onChange={(e) =>
+                        setForm({ ...form, image_url: e.target.value })
+                      }
+                      placeholder="https://example.com/photo.jpg"
+                      className="mt-2 w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4030]/40"
+                    />
+                  </details>
+                </div>
+              </div>
             </div>
 
             <div>

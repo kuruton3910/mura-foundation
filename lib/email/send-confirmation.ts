@@ -30,6 +30,25 @@ type ConfirmationEmailParams = {
   selectedOptions?: SelectedOption[];
 };
 
+/**
+ * メール本文に差し込む値をHTMLエスケープする。
+ * ゲストが入力した氏名・住所・備考などがそのまま埋め込まれると、
+ * 認証済みドメインから任意のHTML（偽の案内文やリンク）を送れてしまうため必須。
+ */
+function esc(value: unknown): string {
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    (c) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[c] as string,
+  );
+}
+
 export async function sendConfirmationEmail(
   params: ConfirmationEmailParams,
 ): Promise<void> {
@@ -45,6 +64,10 @@ export async function sendConfirmationEmail(
   const contactEmail = process.env.MAIL_CONTACT_EMAIL || "info@murafoundation.com";
   const siteName = process.env.MAIL_SITE_NAME || "MURA CAMPING GROUND";
   const siteUrl = process.env.MAIL_SITE_URL || "www.murafoundation.com";
+  // メール内のロゴは絶対URLが必要（相対パスはメールクライアントで表示されない）
+  const logoUrl = `${
+    process.env.NEXT_PUBLIC_SITE_URL || "https://mura-foundation.netlify.app"
+  }/logo.png`;
 
   const discount = params.discountAmount && params.discountAmount > 0;
 
@@ -56,9 +79,9 @@ export async function sendConfirmationEmail(
   <style>
     body { font-family: sans-serif; color: #333; background: #f8f9f4; margin: 0; padding: 0; }
     .container { max-width: 600px; margin: 0 auto; background: #fff; }
-    .header { background: #2D4030; color: #fff; padding: 32px 24px; text-align: center; }
+    .header { background: #fff; color: #2D4030; padding: 28px 24px 20px; text-align: center; border-bottom: 2px solid #2D4030; }
     .header h1 { margin: 0; font-size: 22px; letter-spacing: 2px; }
-    .header p { margin: 8px 0 0; font-size: 13px; opacity: 0.8; }
+    .header p { margin: 8px 0 0; font-size: 13px; color: #6b7280; }
     .body { padding: 32px 24px; }
     .greeting { font-size: 16px; margin-bottom: 24px; }
     .section { border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
@@ -79,35 +102,35 @@ export async function sendConfirmationEmail(
 <body>
   <div class="container">
     <div class="header">
-      <h1>MURA CAMPING GROUND</h1>
+      <img src="${logoUrl}" alt="${siteName}" width="240" style="display:block;margin:0 auto 12px;max-width:100%;height:auto;">
       <p>予約確認メール</p>
     </div>
 
     <div class="body">
       <p class="greeting">
-        ${params.guestName} 様<br><br>
+        ${esc(params.guestName)} 様<br><br>
         この度はMURA CAMPING GROUNDをご予約いただきありがとうございます。<br>
         以下の内容で予約が確定しました。
       </p>
 
       <div class="section">
         <h2>予約内容</h2>
-        <div class="row"><span class="label">チェックイン</span><span class="value">${params.checkinDate}（11:00〜17:00）</span></div>
-        <div class="row"><span class="label">チェックアウト</span><span class="value">${params.checkoutDate}（〜11:00）</span></div>
-        <div class="row"><span class="label">区画数</span><span class="value">${params.vehicleCount}区画</span></div>
-        ${params.vehiclePlate ? `<div class="row"><span class="label">車のナンバー</span><span class="value">${params.vehiclePlate}</span></div>` : ""}
-        ${(params.postalCode || params.prefecture) ? `<div class="row"><span class="label">ご住所</span><span class="value">${params.postalCode ? `〒${params.postalCode}<br>` : ""}${params.prefecture ?? ""}${params.city ?? ""}${params.addressLine ?? ""}</span></div>` : ""}
-        <div class="row"><span class="label">人数</span><span class="value">大人${params.adults}名${params.children > 0 ? ` / 子供${params.children}名` : ""}${params.pets > 0 ? ` / ペット${params.pets}匹` : ""}</span></div>
+        <div class="row"><span class="label">チェックイン</span><span class="value">${esc(params.checkinDate)}（11:00〜17:00）</span></div>
+        <div class="row"><span class="label">チェックアウト</span><span class="value">${esc(params.checkoutDate)}（〜11:00）</span></div>
+        <div class="row"><span class="label">区画数</span><span class="value">${Number(params.vehicleCount)}区画</span></div>
+        ${params.vehiclePlate ? `<div class="row"><span class="label">車のナンバー</span><span class="value">${esc(params.vehiclePlate)}</span></div>` : ""}
+        ${(params.postalCode || params.prefecture) ? `<div class="row"><span class="label">ご住所</span><span class="value">${params.postalCode ? `〒${esc(params.postalCode)}<br>` : ""}${esc(params.prefecture)}${esc(params.city)}${esc(params.addressLine)}</span></div>` : ""}
+        <div class="row"><span class="label">人数</span><span class="value">大人${Number(params.adults)}名${params.children > 0 ? ` / 子供${Number(params.children)}名` : ""}${params.pets > 0 ? ` / ペット${Number(params.pets)}匹` : ""}</span></div>
         ${params.selectedOptions && params.selectedOptions.length > 0
           ? params.selectedOptions.map(opt =>
-              `<div class="row"><span class="label">${opt.name}</span><span class="value">${opt.count}${opt.unit_label}（¥${opt.subtotal.toLocaleString()}）</span></div>`
+              `<div class="row"><span class="label">${esc(opt.name)}</span><span class="value">${Number(opt.count)}${esc(opt.unit_label)}（¥${Number(opt.subtotal).toLocaleString()}）</span></div>`
             ).join("")
           : ""}
       </div>
 
       <div class="section">
         <h2>お支払い金額</h2>
-        ${discount ? `<div class="discount-row"><span>クーポン割引（${params.couponCode}）</span><span>-¥${params.discountAmount!.toLocaleString()}</span></div>` : ""}
+        ${discount ? `<div class="discount-row"><span>クーポン割引（${esc(params.couponCode)}）</span><span>-¥${Number(params.discountAmount).toLocaleString()}</span></div>` : ""}
         <div class="total-row"><span>合計（税込）</span><span>¥${params.totalAmount.toLocaleString()}</span></div>
       </div>
 
@@ -115,7 +138,8 @@ export async function sendConfirmationEmail(
         <h3>重要なご案内</h3>
         <ul>
           <li><strong>チェックイン：11:00〜17:00 / チェックアウト：翌11:00まで</strong></li>
-          <li><strong>20:00〜翌5:00はゲート内への車の出入り禁止</strong></li>
+          <li><strong>19:00〜翌5:00はゲート内への車の出入り禁止</strong></li>
+          <li><strong>デイキャンプご希望の場合でも1泊でのご予約となります</strong></li>
           <li>直火禁止。焚き火台ご持参または事前に申し込みください。</li>
           <li>ゴミは必ずお持ち帰りください。</li>
           <li>キャンセルポリシー：2日前まで無料、前日50%、当日100%</li>
@@ -125,7 +149,7 @@ export async function sendConfirmationEmail(
       <p style="font-size:13px;color:#6b7280;">
         ご不明な点は <strong>${contactEmail}</strong> までお問い合わせください。
       </p>
-      <p class="ref">予約番号: ${params.reservationId}</p>
+      <p class="ref">予約番号: ${esc(params.reservationId)}</p>
     </div>
 
     <div class="footer">
@@ -136,18 +160,26 @@ export async function sendConfirmationEmail(
 </html>
   `.trim();
 
-  // 管理者通知用 BCC（環境変数優先、未設定なら開発者アドレスに送る）
   // カンマ区切りで複数指定可: "a@x.com,b@y.com"
-  const adminBccRaw = process.env.ADMIN_NOTIFY_EMAIL || "beckeymiku@gmail.com";
-  const adminBcc = adminBccRaw
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const parseAddresses = (raw: string) =>
+    raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+  // 運営宛は CC（ゲストにも見える。クライアント要望により必須）
+  const ccList = parseAddresses(
+    process.env.MAIL_CC_EMAIL || "mura.npo@gmail.com",
+  );
+  // BCC は既定では送らない。デバッグ時のみ ADMIN_NOTIFY_EMAIL を設定して使う
+  const bccList = parseAddresses(process.env.ADMIN_NOTIFY_EMAIL ?? "");
 
   await resend.emails.send({
     from,
     to: params.guestEmail,
-    bcc: adminBcc,
+    cc: ccList,
+    // 空配列を渡すとAPIエラーになる可能性があるため、指定がなければキーごと省略する
+    ...(bccList.length > 0 ? { bcc: bccList } : {}),
     subject: `【MURA CAMPING GROUND】ご予約確認 ${params.checkinDate}〜${params.checkoutDate}`,
     html,
   });

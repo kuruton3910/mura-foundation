@@ -65,6 +65,8 @@ export type RentalOption = {
   unit_label: string;
   max_count: number;
   is_exclusive_only?: boolean;
+  /** レンタル品の写真URL（管理画面で設定。未設定なら画像を表示しない） */
+  image_url?: string | null;
 };
 
 /** 週末料金扱いの夜か判定：金・土・日・祝日・ピークシーズン（ローカルTZ基準、カレンダー表示用） */

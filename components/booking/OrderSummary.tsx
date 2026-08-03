@@ -125,22 +125,35 @@ export default function OrderSummary({
       ...(data.checkoutDate ? { checkoutDate: toDateStr(data.checkoutDate) } : {}),
     });
 
-    const res = await fetch(`/api/coupons/validate?${params}`);
-    const json = await res.json();
+    // 通信エラー時も必ず「確認中...」を解除する（try/catch/finally）
+    try {
+      const res = await fetch(`/api/coupons/validate?${params}`);
+      const json = await res.json().catch(() => null);
 
-    if (json.valid) {
-      setCouponInfo({
-        code,
-        discountPercent: json.discountPercent,
-        discountAmount: json.discountAmount,
-        message: json.message,
-      });
-      setValue("couponCode", code);
-    } else {
-      setCouponError(json.message);
+      if (!json) {
+        setCouponError("クーポンの確認に失敗しました。もう一度お試しください。");
+        setValue("couponCode", "");
+        return;
+      }
+
+      if (json.valid) {
+        setCouponInfo({
+          code,
+          discountPercent: json.discountPercent,
+          discountAmount: json.discountAmount,
+          message: json.message,
+        });
+        setValue("couponCode", code);
+      } else {
+        setCouponError(json.message ?? "このクーポンはご利用いただけません。");
+        setValue("couponCode", "");
+      }
+    } catch {
+      setCouponError("通信エラーが発生しました。もう一度お試しください。");
       setValue("couponCode", "");
+    } finally {
+      setCouponLoading(false);
     }
-    setCouponLoading(false);
   }
 
   function handleRemoveCoupon() {
@@ -281,18 +294,53 @@ export default function OrderSummary({
             </div>
           )}
 
-          {/* Rules */}
-          <div className="bg-red-50 p-4 rounded-lg border border-red-100">
-            <h4 className="text-red-800 text-xs font-bold mb-2">重要ルール</h4>
-            <ul className="text-xs text-red-700 space-y-1 list-disc list-inside">
-              <li>
-                <strong>利用時間：11AM 〜 翌11AM</strong>
+          {/* Rules — 唯一の警告色として目立たせる（他は無彩色に寄せている）*/}
+          <div className="rounded-lg border-2 border-red-600 overflow-hidden">
+            <div className="bg-red-600 px-4 py-2 flex items-center gap-1.5">
+              <svg
+                className="w-4 h-4 text-white shrink-0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+                />
+              </svg>
+              <h4 className="text-white text-sm font-bold tracking-wide">
+                必ずお読みください
+              </h4>
+            </div>
+            <ul className="bg-white px-4 py-3 text-xs text-stone-800 space-y-2">
+              <li className="flex gap-2">
+                <span className="text-red-600 font-bold shrink-0">・</span>
+                <span>
+                  利用時間：<strong className="text-red-700">11AM 〜 翌11AM</strong>
+                </span>
               </li>
-              <li>
-                <strong>20:00〜5:00は車の出入り禁止</strong>
+              <li className="flex gap-2">
+                <span className="text-red-600 font-bold shrink-0">・</span>
+                <span>
+                  <strong className="text-red-700">19:00〜翌5:00</strong>
+                  は車の出入り禁止
+                </span>
               </li>
-              <li>
-                <strong>子ども料金は6〜17歳が対象</strong>
+              <li className="flex gap-2">
+                <span className="text-red-600 font-bold shrink-0">・</span>
+                <span>
+                  子ども料金は<strong className="text-red-700">6〜17歳</strong>が対象
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-red-600 font-bold shrink-0">・</span>
+                <span>
+                  デイキャンプご希望の場合でも
+                  <strong className="text-red-700">1泊でご予約</strong>ください
+                </span>
               </li>
             </ul>
           </div>
@@ -327,7 +375,7 @@ export default function OrderSummary({
             <button
               type="button"
               onClick={onNext}
-              disabled={isSubmitting || exclusiveOverLimit}
+              disabled={isSubmitting || (currentStep === 4 && exclusiveOverLimit)}
               className="w-full bg-[#2D4030] hover:bg-[#2D4030]/80 text-white font-bold py-4 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? "処理中..." : STEP_BUTTON_LABELS[currentStep]}

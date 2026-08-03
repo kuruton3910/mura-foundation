@@ -127,14 +127,41 @@ export default function StepConditions({ error }: { error?: string }) {
         <SectionTitle number={1}>日付の選択</SectionTitle>
 
         {/* NAKAMA toggle */}
-        <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200 flex items-center justify-between">
+        <div className="mb-6 p-4 bg-stone-50 rounded-lg border border-stone-200 flex items-start justify-between gap-4">
           <div>
-            <span className="font-bold text-amber-900">
+            <span className="font-bold text-stone-800">
               NAKAMA (賛助会員) ですか？
             </span>
-            <p className="text-sm text-amber-800">
+            <p className="text-sm text-stone-600 mt-0.5">
               会員は{settings.booking_window_member_days}日前から予約可能、一般は{settings.booking_window_days}日前から
             </p>
+            <a
+              href="https://www.murafoundation.com/projects/whatsnakama"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 mt-2 text-sm font-bold text-[#2D4030] border-b-2 border-[#2D4030]/30 hover:border-[#2D4030] transition-colors"
+            >
+              NAKAMAとは
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+                />
+              </svg>
+            </a>
+            {isMember && (
+              <p className="text-xs text-stone-600 mt-3 pt-3 border-t border-stone-200">
+                ※賛助会員の方のみご選択ください。会員でない方は「一般」のままお進みください。
+              </p>
+            )}
           </div>
           <button
             type="button"

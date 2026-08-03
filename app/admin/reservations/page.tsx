@@ -28,7 +28,7 @@ export default async function AdminReservationsPage({
   let query = supabase
     .from("reservations")
     .select(
-      "id, guest_name, guest_email, guest_phone, checkin_date, checkout_date, vehicle_count, adults, children, total_amount, status, created_at",
+      "id, guest_name, guest_email, guest_phone, checkin_date, checkout_date, vehicle_count, adults, children, total_amount, status, is_member, created_at",
     )
     .order("created_at", { ascending: false });
 
@@ -103,9 +103,20 @@ export default async function AdminReservationsPage({
                   return (
                     <tr key={r.id} className="hover:bg-stone-50">
                       <td className="px-4 py-3">
-                        <p className="font-medium text-stone-800">
-                          {r.guest_name}
-                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-stone-800">
+                            {r.guest_name}
+                          </p>
+                          {/* 自己申告のため、会員選択された予約は目視確認できるよう強調表示 */}
+                          {r.is_member && (
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300"
+                              title="お客様が「NAKAMA会員」を選択した予約です（自己申告）。会員かどうかご確認ください。"
+                            >
+                              NAKAMA申告
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-stone-400">{r.guest_email}</p>
                       </td>
                       <td className="px-4 py-3 text-stone-600">

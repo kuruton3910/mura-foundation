@@ -22,6 +22,10 @@ export async function GET(request: NextRequest) {
       "id, guest_name, guest_email, checkin_date, checkout_date, vehicle_count, adults, children, pets, vehicle_plate, postal_code, prefecture, city, address_line, total_amount, discount_amount, coupon_code, selected_options, status, is_exclusive"
     )
     .eq("stripe_session_id", sessionId)
+    // 決済が確定した予約だけを返す。
+    // 未決済(pending)まで返すと、session_id を差し替えられた場合に
+    // 他人の個人情報を引き出す経路になってしまうため。
+    .in("status", ["confirmed", "completed"])
     .single();
 
   if (error || !data) {

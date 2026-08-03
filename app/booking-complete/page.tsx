@@ -5,6 +5,26 @@ import { useSearchParams } from "next/navigation";
 import type { Reservation } from "@/lib/supabase/types";
 import { formatDate } from "@/lib/booking/pricing";
 
+const MAX_ATTEMPTS = 5;
+const FETCH_TIMEOUT_MS = 8000;
+
+/**
+ * タイムアウト付き fetch。
+ * 通信エラー・タイムアウトでも throw せず null を返すため、
+ * 呼び出し側でスピナーが回り続ける事故を防げる。
+ */
+async function fetchOnce(url: string): Promise<Response | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // useSearchParams() は Suspense でラップが必要なため内部コンポーネントに分離
 function BookingCompleteContent() {
   const searchParams = useSearchParams();
@@ -12,6 +32,9 @@ function BookingCompleteContent() {
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  // 手動リトライ用。値が変わると useEffect が再実行される
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     if (!sessionId) {
@@ -20,34 +43,75 @@ function BookingCompleteContent() {
       return;
     }
 
+    // アンマウント・再実行時に古い処理が state を書き換えないようにする
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setAttempt(0);
+
     async function fetchReservation() {
-      // サーバーAPI経由で取得（RLSを回避）
-      // Webhook処理待ちのためリトライ（最大5回、計約15秒）
-      for (let attempt = 0; attempt < 5; attempt++) {
-        await new Promise((r) => setTimeout(r, attempt === 0 ? 1500 : 3000));
+      try {
+        // Webhook 処理待ちのためリトライ（最大5回）
+        for (let i = 0; i < MAX_ATTEMPTS; i++) {
+          if (cancelled) return;
+          setAttempt(i + 1);
 
-        const res = await fetch(`/api/reservations/by-session?session_id=${encodeURIComponent(sessionId!)}`);
-        if (res.ok) {
-          const { reservation } = await res.json();
-          setReservation(reservation as Reservation);
-          setLoading(false);
-          return;
+          await new Promise((r) => setTimeout(r, i === 0 ? 1200 : 3000));
+          if (cancelled) return;
+
+          const res = await fetchOnce(
+            `/api/reservations/by-session?session_id=${encodeURIComponent(sessionId!)}`,
+          );
+
+          // 通信エラー・タイムアウト → 次の試行へ
+          if (!res) continue;
+
+          if (res.ok) {
+            const json = await res.json().catch(() => null);
+            if (json?.reservation) {
+              if (cancelled) return;
+              setReservation(json.reservation as Reservation);
+              return;
+            }
+            continue;
+          }
+
+          // session_id の形式が不正（400）はリトライしても変わらないので即終了
+          if (res.status === 400) {
+            if (cancelled) return;
+            setError("決済セッションの情報が正しく受け取れませんでした。");
+            return;
+          }
         }
-      }
 
-      setError("予約情報の取得に失敗しました。しばらくしてからページを再読み込みしてください。");
-      setLoading(false);
+        if (cancelled) return;
+        setError(
+          "予約情報の反映に時間がかかっています。決済が完了している場合は確認メールが届きますのでご安心ください。",
+        );
+      } catch {
+        if (cancelled) return;
+        setError("予約情報の取得中にエラーが発生しました。");
+      } finally {
+        // どの経路を通っても必ずスピナーを止める
+        if (!cancelled) setLoading(false);
+      }
     }
 
     fetchReservation();
-  }, [sessionId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, retryKey]);
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center py-24">
+      <div className="flex-1 flex items-center justify-center py-24 px-4">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[#2D4030] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-stone-600">予約情報を確認しています...</p>
+          <p className="text-xs text-stone-400 mt-2">
+            確認中（{attempt}/{MAX_ATTEMPTS}）— 数十秒かかる場合があります
+          </p>
         </div>
       </div>
     );
@@ -73,17 +137,40 @@ function BookingCompleteContent() {
             </svg>
           </div>
           <h1 className="text-xl font-bold text-stone-800 mb-2">
-            エラーが発生しました
+            予約情報を表示できませんでした
           </h1>
-          <p className="text-stone-500 text-sm mb-6">
+          <p className="text-stone-500 text-sm mb-4">
             {error || "予約情報が見つかりませんでした"}
           </p>
-          <a
-            href="/"
-            className="inline-block bg-[#2D4030] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#2D4030]/80 transition-colors"
-          >
-            予約ページに戻る
-          </a>
+
+          {/* 決済済みのお客様を不安にさせないための案内 */}
+          {sessionId && (
+            <div className="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 text-left">
+              <p className="font-bold mb-1">ご決済は完了している可能性があります</p>
+              <p>
+                この画面が表示されても、決済が完了していればご予約は成立しています。
+                確認メールをご確認ください。届いていない場合はお問い合わせください。
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {sessionId && (
+              <button
+                type="button"
+                onClick={() => setRetryKey((k) => k + 1)}
+                className="w-full bg-[#2D4030] text-white px-6 py-3 rounded-lg font-bold hover:bg-[#2D4030]/80 transition-colors"
+              >
+                もう一度確認する
+              </button>
+            )}
+            <a
+              href="/"
+              className="block w-full border border-stone-300 text-stone-600 px-6 py-3 rounded-lg font-medium hover:bg-stone-50 transition-colors"
+            >
+              予約ページに戻る
+            </a>
+          </div>
         </div>
       </div>
     );
@@ -201,7 +288,7 @@ function BookingCompleteContent() {
             チェックアウトは <strong>翌11:00まで</strong> です
           </li>
           <li>
-            20:00〜翌5:00は <strong>車の出入り禁止</strong> です
+            19:00〜翌5:00は <strong>車の出入り禁止</strong> です
           </li>
           <li>ゴミは必ずお持ち帰りください</li>
         </ul>
@@ -234,12 +321,14 @@ function LoadingFallback() {
 export default function BookingCompletePage() {
   return (
     <div className="min-h-screen bg-[#F8F9F4] flex flex-col">
-      <header className="bg-[#2D4030] text-white py-6 shadow-md">
+      <header className="bg-white border-b border-stone-200 shadow-sm py-4">
         <div className="container mx-auto px-4">
-          <h1 className="text-2xl font-bold tracking-wider">
-            MURA CAMPING GROUND
-          </h1>
-          <p className="text-sm opacity-80">オンライン予約システム</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.png"
+            alt="MURA FOUNDATION"
+            className="h-12 sm:h-16 md:h-20 w-auto object-contain"
+          />
         </div>
       </header>
 
