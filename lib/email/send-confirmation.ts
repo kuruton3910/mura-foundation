@@ -61,7 +61,8 @@ export async function sendConfirmationEmail(
   const resend = new Resend(apiKey);
   const from = process.env.RESEND_FROM_EMAIL || "noreply@murafoundation.com";
   // メール本文の問い合わせ先・サイト名（環境変数で差し替え可能）
-  const contactEmail = process.env.MAIL_CONTACT_EMAIL || "info@murafoundation.com";
+  // 既定値はクライアントから指定された運営アドレス
+  const contactEmail = process.env.MAIL_CONTACT_EMAIL || "mura.npo@gmail.com";
   const siteName = process.env.MAIL_SITE_NAME || "MURA CAMPING GROUND";
   const siteUrl = process.env.MAIL_SITE_URL || "www.murafoundation.com";
   // メール内のロゴは絶対URLが必要（相対パスはメールクライアントで表示されない）
