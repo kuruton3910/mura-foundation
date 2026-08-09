@@ -282,7 +282,7 @@ function BookingCompleteContent() {
         <h3 className="font-bold text-amber-900 mb-3">当日のご案内</h3>
         <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside">
           <li>
-            チェックインは <strong>11:00〜17:00</strong> です
+            チェックインは <strong>11:00〜</strong> です
           </li>
           <li>
             チェックアウトは <strong>翌11:00まで</strong> です
