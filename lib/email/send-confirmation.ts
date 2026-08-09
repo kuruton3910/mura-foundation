@@ -93,9 +93,8 @@ export async function sendConfirmationEmail(
     .value { font-weight: 600; }
     .total-row { display: flex; justify-content: space-between; padding: 12px 0; font-size: 18px; font-weight: bold; color: #2D4030; }
     .discount-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; color: #059669; }
-    .alert { background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 16px; margin-bottom: 20px; }
-    .alert h3 { margin: 0 0 8px; font-size: 13px; color: #b91c1c; }
-    .alert ul { margin: 0; padding-left: 16px; font-size: 13px; color: #dc2626; line-height: 1.8; }
+    .notice { background: #f8f9f4; border: 1px solid #d6d3d1; border-radius: 6px; padding: 16px; margin-bottom: 20px; }
+    .notice p { margin: 0; font-size: 13px; color: #44403c; line-height: 1.9; }
     .footer { background: #f3f4f6; padding: 20px 24px; text-align: center; font-size: 12px; color: #9ca3af; }
     .ref { font-size: 11px; color: #9ca3af; margin-top: 4px; }
   </style>
@@ -135,16 +134,12 @@ export async function sendConfirmationEmail(
         <div class="total-row"><span>合計（税込）</span><span>¥${params.totalAmount.toLocaleString()}</span></div>
       </div>
 
-      <div class="alert">
-        <h3>重要なご案内</h3>
-        <ul>
-          <li><strong>チェックイン：11:00〜17:00 / チェックアウト：翌11:00まで</strong></li>
-          <li><strong>19:00〜翌5:00はゲート内への車の出入り禁止</strong></li>
-          <li><strong>デイキャンプご希望の場合でも1泊でのご予約となります</strong></li>
-          <li>直火禁止。焚き火台ご持参または事前に申し込みください。</li>
-          <li>ゴミは必ずお持ち帰りください。</li>
-          <li>キャンセルポリシー：2日前まで無料、前日50%、当日100%</li>
-        </ul>
+      <div class="notice">
+        <p>
+          このメールは決済を完了されたゲストに自動送信されています。<br>
+          後ほどマネージメントから重要なご案内をお送りしますので、
+          <strong>必ずご確認の上ご来場ください。</strong>
+        </p>
       </div>
 
       <p style="font-size:13px;color:#6b7280;">
