@@ -115,7 +115,7 @@ export async function sendConfirmationEmail(
 
       <div class="section">
         <h2>予約内容</h2>
-        <div class="row"><span class="label">チェックイン</span><span class="value">${esc(params.checkinDate)}（11:00〜17:00）</span></div>
+        <div class="row"><span class="label">チェックイン</span><span class="value">${esc(params.checkinDate)}（11:00〜）</span></div>
         <div class="row"><span class="label">チェックアウト</span><span class="value">${esc(params.checkoutDate)}（〜11:00）</span></div>
         <div class="row"><span class="label">区画数</span><span class="value">${Number(params.vehicleCount)}区画</span></div>
         ${params.vehiclePlate ? `<div class="row"><span class="label">車のナンバー</span><span class="value">${esc(params.vehiclePlate)}</span></div>` : ""}
